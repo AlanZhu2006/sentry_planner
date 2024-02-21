@@ -4,3 +4,6 @@
 [submodule "rm_navigation_ws"]
 	path = rm_navigation_ws
 	url = https://gitee.com/SMBU-POLARBEAR/pb_rmsimulation
+[submodule "rm_decision_ws"]
+	path = rm_decision_ws
+	url = https://gitee.com/SMBU-POLARBEAR/rm_behavior_tree
