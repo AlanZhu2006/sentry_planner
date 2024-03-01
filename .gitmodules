@@ -1,6 +1,3 @@
-[submodule "rm_vision_ws"]
-	path = rm_vision_ws
-	url = https://gitee.com/SMBU-POLARBEAR/rm_vision
 [submodule "rm_navigation_ws"]
 	path = rm_navigation_ws
 	url = https://gitee.com/SMBU-POLARBEAR/pb_rmsimulation
