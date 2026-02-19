@@ -5,6 +5,38 @@
 
 #include <cstdint>
 
+namespace crc8
+{
+
+static uint8_t crc8_update(uint8_t crc, uint8_t data)
+{
+  crc ^= data;
+  for (int i = 0; i < 8; i++) {
+    if (crc & 0x80)
+      crc = (crc << 1) ^ 0x07;
+    else
+      crc = (crc << 1);
+  }
+  return crc;
+}
+
+uint8_t Get_CRC8_Check_Sum(const uint8_t * data, uint32_t len)
+{
+  uint8_t crc = 0;
+  if (data == nullptr) return 0;
+  for (uint32_t i = 0; i < len; i++)
+    crc = crc8_update(crc, data[i]);
+  return crc;
+}
+
+void Append_CRC8_Check_Sum(uint8_t * data, uint32_t len)
+{
+  if (data == nullptr || len < 2) return;
+  data[len - 1] = Get_CRC8_Check_Sum(data, len - 1);
+}
+
+}  // namespace crc8
+
 namespace crc16
 {
 constexpr uint16_t CRC16_INIT = 0xFFFF;

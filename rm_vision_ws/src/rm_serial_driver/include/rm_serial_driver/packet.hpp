@@ -45,14 +45,12 @@ struct SendPacketVision
 
 struct SendPacketTwist
 {
-  uint8_t header = 0xA4;
-  float linear_x;
-  float linear_y;
-  float linear_z;
-  float angular_x;
-  float angular_y;
-  float angular_z;
-  uint16_t checksum = 0;
+  uint8_t header1 = 0xA5;
+  uint8_t header2 = 0x5A;
+  float vx;  // linear.x
+  float vy;  // linear.y
+  float wz;  // angular.z
+  uint8_t crc8 = 0;
 } __attribute__((packed));
 
 struct SendPacketRobotControl

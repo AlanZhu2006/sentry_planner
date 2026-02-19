@@ -350,14 +350,11 @@ void RMSerialDriver::sendDataTwist(const geometry_msgs::msg::Twist::SharedPtr ms
 {
   try {
     SendPacketTwist packet;
-    packet.linear_x = msg->linear.x;
-    packet.linear_y = msg->linear.y;
-    packet.linear_z = msg->linear.z;
-    packet.angular_x = msg->angular.x;
-    packet.angular_y = msg->angular.y;
-    packet.angular_z = msg->angular.z;
+    packet.vx = msg->linear.x;
+    packet.vy = msg->linear.y;
+    packet.wz = msg->angular.z;
 
-    crc16::Append_CRC16_Check_Sum(reinterpret_cast<uint8_t *>(&packet), sizeof(packet));
+    crc8::Append_CRC8_Check_Sum(reinterpret_cast<uint8_t *>(&packet), sizeof(packet));
     std::vector<uint8_t> data = toVector(packet);
     serial_driver_->port()->send(data);
 
