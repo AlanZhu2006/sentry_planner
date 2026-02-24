@@ -1,5 +1,4 @@
 #include "rm_behavior_tree/plugins/action/send_goal.hpp"
-#include "rm_behavior_tree/bt_conversions.hpp"
 
 namespace rm_behavior_tree
 {
@@ -12,11 +11,11 @@ SendGoalAction::SendGoalAction(
 
 bool SendGoalAction::setGoal(nav2_msgs::action::NavigateToPose::Goal & goal)
 {
-  auto res = getInput<std::string>("goal_pose");
+  auto res = getInput<geometry_msgs::msg::PoseStamped>("goal_pose");
   if (!res) {
     throw BT::RuntimeError("error reading port [goal_pose]:", res.error());
   }
-  goal.pose = BT::convertFromString<geometry_msgs::msg::PoseStamped>(res.value());
+  goal.pose = res.value();
   goal.pose.header.frame_id = "map";
   goal.pose.header.stamp = rclcpp::Clock().now();
 

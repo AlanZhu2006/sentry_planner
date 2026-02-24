@@ -1,6 +1,7 @@
 #ifndef RM_BEHAVIOR_TREE__PLUGINS__ACTION__IS_DETECT_ENEMY_HPP_
 #define RM_BEHAVIOR_TREE__PLUGINS__ACTION__IS_DETECT_ENEMY_HPP_
 
+#include <auto_aim_interfaces/msg/detail/armors__struct.hpp>
 #include "behaviortree_cpp/condition_node.h"
 #include "auto_aim_interfaces/msg/armors.hpp"
 

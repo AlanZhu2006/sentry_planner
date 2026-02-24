@@ -1,5 +1,4 @@
 #include "rm_behavior_tree/rm_behavior_tree.h"
-#include "rm_behavior_tree/bt_conversions.hpp"  // PoseStamped convertFromString
 
 #include "behaviortree_cpp/bt_factory.h"
 #include "behaviortree_cpp/loggers/groot2_publisher.h"

@@ -17,7 +17,7 @@ public:
   static BT::PortsList providedPorts()
   {
     return {
-      BT::InputPort<std::string>("goal_pose"),
+      BT::InputPort<geometry_msgs::msg::PoseStamped>("goal_pose"),
       BT::InputPort<std::string>("action_name")};
   }
 
