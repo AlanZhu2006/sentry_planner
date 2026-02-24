@@ -4,7 +4,7 @@ import yaml
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, GroupAction, TimerAction
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, GroupAction, TimerAction, ExecuteProcess
 from launch_ros.actions import Node
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Command
@@ -51,7 +51,8 @@ def generate_launch_description():
     ################################### slam_toolbox parameters end ###################################
 
     ################################### navigation2 parameters start ##################################
-    nav2_map_dir = PathJoinSubstitution([rm_nav_bringup_dir, 'map', world]), ".yaml"
+    # 仿真专用地图：固定使用 RMUL（非 11_map/Desktop 等实机地图）
+    nav2_map_path = os.path.join(rm_nav_bringup_dir, 'map', 'RMUL.yaml')
     nav2_params_file_dir = os.path.join(rm_nav_bringup_dir, 'config', 'simulation', 'nav2_params_sim.yaml')
     ################################### navigation2 parameters end ####################################
 
@@ -90,6 +91,7 @@ def generate_launch_description():
         default_value='',
         description='Choose mode: nav, mapping')
 
+    # 仿真固定用 RMUL，不暴露 map 参数避免误传 11_map
     declare_localization_cmd = DeclareLaunchArgument(
         'localization',
         default_value='',
@@ -101,13 +103,20 @@ def generate_launch_description():
         description='Choose lio alogrithm: fastlio or pointlio')
 
     # Specify the actions
+    declare_headless_cmd = DeclareLaunchArgument(
+        'headless',
+        default_value='False',
+        description='Run Gazebo without GUI (much lighter)'
+    )
+
     start_rm_simulation = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(pb_rm_simulation_launch_dir, 'rm_simulation.launch.py')),
         launch_arguments={
             'use_sim_time': use_sim_time,
             'world': world,
             'robot_description': robot_description,
-            'rviz': 'False'}.items()
+            'rviz': 'False',
+            'headless': LaunchConfiguration('headless')}.items()
     )
 
     bringup_imu_complementary_filter_node = Node(
@@ -134,25 +143,13 @@ def generate_launch_description():
         parameters=[segmentation_params]
     )
 
-    bringup_pointcloud_to_laserscan_node = Node(
-        package='pointcloud_to_laserscan', executable='pointcloud_to_laserscan_node',
-        remappings=[('cloud_in',  ['/segmentation/obstacle']),
-                    ('scan',  ['/scan'])],
-        parameters=[{
-            'target_frame': 'livox_frame',
-            'transform_tolerance': 0.01,
-            'min_height': -1.0,
-            'max_height': 0.1,
-            'angle_min': -3.14159,  # -M_PI/2
-            'angle_max': 3.14159,   # M_PI/2
-            'angle_increment': 0.0043,  # M_PI/360.0
-            'scan_time': 0.3333,
-            'range_min': 0.45,
-            'range_max': 10.0,
-            'use_inf': True,
-            'inf_epsilon': 1.0
-        }],
-        name='pointcloud_to_laserscan'
+    # 仿真专用：始终订阅点云并发布 /scan，无懒订阅
+    pc2scan_script = os.path.join(
+        get_package_share_directory('rm_nav_bringup'), 'scripts', 'pointcloud_to_laserscan_sim.py')
+    bringup_pointcloud_to_laserscan_node = ExecuteProcess(
+        cmd=['python3', pc2scan_script, '--ros-args', '-p', 'use_sim_time:=true'],
+        output='screen',
+        emulate_tty=True,
     )
 
     bringup_LIO_group = GroupAction([
@@ -160,16 +157,25 @@ def generate_launch_description():
             package="tf2_ros",
             executable="static_transform_publisher",
             arguments=[
-                # Useless arguments, provided by LIO in publish_odometry() function
-                # '--x', '0.0',
-                # '--y', '0.0',
-                # '--z', '0.0',
-                # '--roll', '0.0',
-                # '--pitch', '0.0',
-                # '--yaw', '0.0',
                 '--frame-id', 'odom',
                 '--child-frame-id', 'lidar_odom'
             ],
+        ),
+        # 连接 Fast-LIO 与 Nav2：lidar_odom<->camera_init, body<->base_link，使 map 与 base_link_fake 在同一 TF 树
+        Node(
+            package="tf2_ros",
+            executable="static_transform_publisher",
+            name="lidar_odom_to_camera_init",
+            arguments=['0', '0', '0', '0', '0', '0', 'lidar_odom', 'camera_init'],
+            parameters=[{'use_sim_time': use_sim_time}],
+        ),
+        # dummy 是 URDF 根，body 是 Fast-LIO 的机器人帧，连接后：map->odom->lidar_odom->camera_init->body->dummy->base_link->base_link_fake
+        Node(
+            package="tf2_ros",
+            executable="static_transform_publisher",
+            name="body_to_dummy",
+            arguments=['0', '0', '0', '0', '0', '0', 'body', 'dummy'],
+            parameters=[{'use_sim_time': use_sim_time}],
         ),
 
         GroupAction(
@@ -227,6 +233,15 @@ def generate_launch_description():
     start_localization_group = GroupAction(
         condition = LaunchConfigurationEquals('mode', 'nav'),
         actions=[
+            # 保底：立即发布 map->odom，确保 map 坐标系存在，避免 RViz/Nav2 报 "frame does not exist"
+            # AMCL 启动后也会发布 map->odom（可能产生 multiple authority 警告，但 map 能正常显示）
+            Node(
+                package='tf2_ros',
+                executable='static_transform_publisher',
+                name='map_to_odom_publisher',
+                arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom'],
+                parameters=[{'use_sim_time': use_sim_time}],
+            ),
             Node(
                 condition = LaunchConfigurationEquals('localization', 'slam_toolbox'),
                 package='slam_toolbox',
@@ -271,7 +286,7 @@ def generate_launch_description():
                 condition = LaunchConfigurationNotEquals('localization', 'slam_toolbox'),
                 launch_arguments={
                     'use_sim_time': use_sim_time,
-                    'map': nav2_map_dir,
+                    'map': nav2_map_path,
                     'params_file': nav2_params_file_dir,
                     'container_name': 'nav2_container'}.items())
         ]
@@ -302,7 +317,7 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(os.path.join(navigation2_launch_dir, 'bringup_rm_navigation.py')),
         launch_arguments={
             'use_sim_time': use_sim_time,
-            'map': nav2_map_dir,
+            'map': nav2_map_path,
             'params_file': nav2_params_file_dir,
             'nav_rviz': use_nav_rviz}.items()
     )
@@ -311,6 +326,7 @@ def generate_launch_description():
 
     # Declare the launch options
     ld.add_action(declare_use_sim_time_cmd)
+    ld.add_action(declare_headless_cmd)
     ld.add_action(declare_use_lio_rviz_cmd)
     ld.add_action(declare_nav_rviz_cmd)
     ld.add_action(declare_world_cmd)

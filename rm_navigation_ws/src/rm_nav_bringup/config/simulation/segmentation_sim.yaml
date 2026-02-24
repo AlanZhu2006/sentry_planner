@@ -1,11 +1,11 @@
 ground_segmentation:
   ros__parameters:
-    n_threads: 4                # number of threads to use.
+    n_threads: 2                # 4->2 减轻 CPU 竞争
 
     r_min: 0.2                  # minimum point distance.
     r_max: 50                   # maximum point distance.
-    n_bins: 120                 # number of radial bins.
-    n_segments: 360             # number of radial segments.
+    n_bins: 80                  # 120->80 减少径向分桶
+    n_segments: 180             # 360->180 减少角度分段
 
     max_dist_to_line: 0.1       # maximum vertical distance of point to line to be considered ground.
 
@@ -23,6 +23,8 @@ ground_segmentation:
     latch: false                # latch output topics or not
     visualize: false            # visualize segmentation result - USE ONLY FOR DEBUGGING
 
+    # 仿真：Gazebo Livox 插件直接发布 PointCloud2 到 /livox/lidar/pointcloud（绕过 Fast-LIO，避免 /scan 无数据）
+    # 若 Fast-LIO 正常，可改为 /cloud_registered
     input_topic: "/livox/lidar/pointcloud"
     obstacle_output_topic: "segmentation/obstacle"
     ground_output_topic: "segmentation/ground"

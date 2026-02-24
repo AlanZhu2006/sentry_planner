@@ -21,6 +21,7 @@ ament_auto_find_build_dependencies()
 
 set(PACKAGE_INCLUDE_DEPENDS
     rm_decision_interfaces
+    auto_aim_interfaces
     rclcpp
     std_msgs
     behaviortree_cpp

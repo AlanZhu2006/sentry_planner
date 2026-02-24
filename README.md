@@ -6,7 +6,63 @@
 
 ---
 
+## 目录
+
+| 章节 | 内容 |
+|------|------|
+| [〇](#〇nyush-适配与变更记录--change-log) | NYUSH 适配与变更记录 |
+| [一](#一系统架构总览) | 系统架构总览 |
+| [二](#二项目结构) | 项目结构 |
+| [三](#三行为树决策详解) | 行为树决策详解 |
+| [四](#四上下位机通信协议) | 上下位机通信协议 |
+| [五](#五快速开始) | 快速开始 (含 build 顺序、start_robot、无雷达测试) |
+| [五.7](#57-决策系统调试指南) | 决策系统调试指南 (Todo + 必修问题) |
+| [五.9](#59-navigation-仿真进度与配置) | Navigation 仿真进度与配置 (2025-02) |
+| [五.10](#510-下一步-todo) | 下一步 TODO |
+| [六](#六实车部署) | 实车部署 |
+| [七](#七常见问题) | 常见问题 |
+| [八](#八参考资料) | 参考资料 |
+
+---
+
+## 〇、NYUSH 适配与变更记录 / Change Log
+
+> 本节记录 NYUSH Robotics 对原始 SMBU 框架所做的全部修改及当前架构。
+
+### 0.1 固件层 (nyush-rm-control) 变更
+
+| 模块 | 变更内容 |
+|------|----------|
+| **radar_comm** | 雷达协议从 15 字节扩展为 **19 字节**：`[0xA5][0x5A][vx:4B][vy:4B][wz:4B][yaw_deg:4B][CRC8:1B]`，新增 `yaw_deg` 用于雷达 IMU 固定正方向 |
+| **Chassis_Ctrl_Cmd_s** | 新增 `ref_yaw_deg`、`ref_yaw_valid` 字段，雷达有效时传递世界系下底盘 yaw |
+| **robot_cmd.c** | 雷达分支解析 `radar_data->yaw_deg` 并写入 `chassis_cmd_send.ref_yaw_deg` |
+| **sentry_controller.c** | 当 `ref_yaw_valid` 时，使用 `-ref_yaw_deg` 做世界→底盘速度变换，替代 `offset_angle` |
+
+### 0.2 上位机脚本变更
+
+| 文件 | 用途 |
+|------|------|
+| `nyush-rm-control/scripts/cmd_vel_keyboard_fixed.py` | 键盘控制 + 19 字节雷达协议，`(vx,vy)` 逆时针旋转 90° 以适配雷达系，`yaw_deg=0`（键盘模式无 IMU） |
+| `sentry_planner/scripts/fake_sensors_for_test.py` | 发布假 `/scan`、`/odom`、`map→odom→base_link` TF，用于无雷达测试 Nav2 + 决策 |
+| `sentry_planner/scripts/test_no_lidar.sh` | 无雷达测试流程说明脚本 |
+
+### 0.3 sentry_planner 变更
+
+| 项目 | 变更内容 |
+|------|----------|
+| **start_robot.sh** | 在 Nav2 之后增加决策行为树启动，依次 source `nav_ws` → `rm_vision_ws` → `rm_decision_ws`，`style:=retreat_attack_left` |
+| **rm_navigation_ws install/setup.bash** | 移除对 `rm_decision_ws`、`rm_vision_ws` 的链式依赖，避免 "not found" 报错 |
+| **rm_decision_ws** | 修改 `is_detect_enemy.hpp` 去掉 `armors__struct.hpp` 依赖；CMakeLists 增加 `auto_aim_interfaces` 依赖 |
+| **rm_navigation_ws 构建** | 需先 `source ~/nav_ws/install/setup.bash` 再 `colcon build`，否则 `ros2_livox_simulation` 找不到 `livox_ros_driver2` |
+| **rm_nav_bringup 依赖** | 需构建 `rm_navigation`、`fake_vel_transform`，否则 launch 报 `PackageNotFoundError` |
+| **nav2_params_sim.yaml** | 对齐 my_nav2_params：min_y_velocity_threshold 0.001、AMCL 粒子数、costmap 参数；保留旋转 (max_vel_theta) |
+| **仿真轻量化** | Gazebo 100Hz、Livox 点云降密度、Fast-LIO/segmentation 参数调低；新增 headless 模式 |
+
+---
+
 ## 一、系统架构总览
+
+### 1.1 整体数据流
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -41,44 +97,110 @@
 │  │                        Navigation2 (Nav2)                            │   │
 │  │  输入: /goal_pose, /Odometry, /scan                                  │   │
 │  │  处理: 全局路径规划 → 局部路径规划 → 动态避障                           │   │
-│  │  输出: /cmd_vel_chassis ──────────────► C板执行                       │   │
+│  │  输出: /cmd_vel ──► serial_sender / rm_serial_driver ──► C板执行       │   │
 │  └──────────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### 1.2 实车完整数据流
+
+```
+LiDAR → livox_ros_driver2 → Fast-LIO → /cloud_registered, /Odometry
+                              │
+                              ▼
+         pointcloud_to_laserscan → /scan ──┐
+                                           │
+         TF: odom→body→base_link ──────────┼──► Nav2 ──► /cmd_vel
+                                           │         │
+         /goal_pose (来自决策树) ────────────┘         │
+                                                      ▼
+         serial_sender.py / rm_serial_driver ──► USB ──► C板 radar_comm
+                                                      │
+                                                      ▼
+         STM32 radar_comm ──► robot_cmd ──► chassis_cmd ──► sentry_controller
+         (19字节: vx,vy,wz,yaw_deg)         (ref_yaw)      (舵轮底盘控制)
+```
+
+### 1.3 工作空间与依赖关系
+
+```
+                    /opt/ros/humble
+                           │
+        ┌──────────────────┼──────────────────┐
+        ▼                  ▼                  ▼
+   ~/nav_ws           rm_vision_ws        rm_decision_ws
+   (livox_ros_driver2,  (auto_aim_        (rm_behavior_tree,
+    Fast-LIO, Nav2...)   interfaces)        rm_decision_interfaces)
+        │                  │                  │
+        └──────────────────┴────────┬──────────┘
+                                   ▼
+                           rm_navigation_ws
+                    (需先 source nav_ws 再 build)
+                    (Gazebo 仿真、rm_nav_bringup)
+```
+
+**构建顺序建议：** ROS → nav_ws → rm_vision_ws → rm_decision_ws → rm_navigation_ws
 
 ---
 
 ## 二、项目结构
 
+### 2.1 NYUSH 完整目录结构
+
 ```
-RM2024_SMBU_auto_sentry_ws/
-├── rm_decision_ws/          # 决策模块 (行为树)
-│   ├── rm_behavior_tree/    # 行为树实现
-│   │   ├── config/          # 行为树XML配置
-│   │   │   ├── attack_left.xml
-│   │   │   ├── attack_right.xml
-│   │   │   ├── protect_supply.xml
-│   │   │   └── retreat_attack_left.xml
-│   │   ├── plugins/         # 行为树节点插件
-│   │   │   ├── action/      # 动作节点
-│   │   │   ├── condition/   # 条件节点
-│   │   │   └── decorator/   # 装饰节点
-│   │   └── src/             # 主程序
-│   └── rm_decision_interfaces/  # 消息定义
+sentry_planner/                    # 哨兵决策与仿真主目录
+├── start_robot.sh                 # 一键启动 (雷达+Fast-LIO+Nav2+决策)
+├── README.md
+├── scripts/
+│   ├── fake_sensors_for_test.py   # 无雷达假传感器 (/scan, /odom, TF)
+│   └── test_no_lidar.sh           # 无雷达测试流程
 │
-├── rm_navigation_ws/        # 导航模块
+├── rm_decision_ws/                # 决策模块 (行为树)
 │   └── src/
-│       ├── rm_nav_bringup/  # 启动文件和配置
-│       ├── rm_localization/ # 定位 (FAST_LIO, Point_LIO, ICP)
-│       ├── rm_navigation/   # Navigation2 + TEB
-│       ├── rm_perception/   # 点云处理
-│       └── rm_simulation/   # Gazebo仿真
+│       ├── rm_behavior_tree/       # 行为树实现
+│       │   ├── config/            # 行为树 XML 配置
+│       │   │   ├── attack_left.xml
+│       │   │   ├── retreat_attack_left.xml
+│       │   │   └── ...
+│       │   ├── plugins/            # 行为树节点插件
+│       │   └── src/
+│       └── rm_decision_interfaces/ # 消息定义
 │
-└── rm_vision_ws/            # 视觉模块
-    └── src/
-        ├── rm_auto_aim/     # 自瞄算法
-        ├── rm_serial_driver/ # 串口通信 (与C板)
-        └── ros2_hik_camera/ # 海康相机驱动
+├── rm_vision_ws/                  # 视觉模块
+│   └── src/
+│       ├── auto_aim_interfaces/   # 装甲板检测消息 (决策依赖)
+│       ├── rm_serial_driver/      # 串口通信 (与 C 板)
+│       └── ros2_hik_camera/       # 海康相机
+│
+├── rm_navigation_ws/              # 导航与仿真
+│   └── src/
+│       ├── rm_nav_bringup/        # 仿真/实车启动配置
+│       ├── rm_navigation/         # Nav2 + TEB (需单独 build)
+│       │   ├── rm_navigation/      # launch、params
+│       │   └── fake_vel_transform/ # 云台旋转时速度变换
+│       ├── rm_localization/        # ICP 等
+│       ├── rm_perception/         # 点云处理
+│       └── rm_simulation/          # Gazebo + ros2_livox_simulation
+│
+~/nav_ws/                          # 实车雷达栈 (独立工作空间)
+├── src/
+│   ├── livox_ros_driver2/         # Mid-360 驱动 (rm_navigation_ws 构建依赖)
+│   ├── FAST_LIO/
+│   ├── pointcloud_to_laserscan/
+│   └── ...
+├── my_nav2_params.yaml
+├── start_robot.sh                 # 或使用 sentry_planner/start_robot.sh
+└── serial_sender.py               # cmd_vel → 串口 (可选)
+
+nyush-rm-control/                  # STM32 固件 (C 板)
+├── application/
+│   ├── chassis/sentry_controller.c # 舵轮底盘，使用 ref_yaw 做速度变换
+│   ├── cmd/robot_cmd.c            # 雷达分支传递 ref_yaw
+│   └── robot_def.h                # Chassis_Ctrl_Cmd_s 定义
+├── modules/
+│   └── radar_comm/                # 19 字节雷达协议解析
+└── scripts/
+    └── cmd_vel_keyboard_fixed.py  # 键盘控制 + 19 字节协议
 ```
 
 ---
@@ -163,13 +285,27 @@ RM2024_SMBU_auto_sentry_ws/
 ```
 ┌─────────────────┐    USB/UART    ┌─────────────────┐
 │   上位机 (NUC)  │ ◄────────────► │   C板 (STM32)   │
-│  rm_serial_driver│               │  master_process │
+│ serial_sender / │   115200 baud  │  radar_comm +   │
+│ rm_serial_driver│                │  master_process │
 └─────────────────┘                └─────────────────┘
 ```
 
-### 4.2 数据包格式
+### 4.2 导航速度协议 (上位机 → C板, 19 字节)
 
-#### C板 → 上位机 (裁判系统数据上传)
+**NYUSH 扩展协议：** 在原有 15 字节基础上增加 `yaw_deg` 字段，用于雷达 IMU 固定正方向。
+
+| 偏移 | 长度 | 字段 | 说明 |
+|------|------|------|------|
+| 0 | 2B | `0xA5 0x5A` | 帧头 |
+| 2 | 4B | `vx` | 线速度 x (m/s), float32 小端 |
+| 6 | 4B | `vy` | 线速度 y (m/s) |
+| 10 | 4B | `wz` | 角速度 (rad/s) |
+| 14 | 4B | `yaw_deg` | 底盘在雷达/世界系下的 yaw（度），键盘模式传 0 |
+| 18 | 1B | CRC8 | 多项式 0x07，对前 18 字节计算 |
+
+**键盘控制脚本：** `nyush-rm-control/scripts/cmd_vel_keyboard_fixed.py` 会做 90° 旋转 `(vx,vy)→(-vy,vx)` 以适配雷达坐标系，`yaw_deg=0`。
+
+### 4.4 C板 → 上位机 (裁判系统数据上传)
 
 | 包类型 | Header | 数据内容 | 校验 | 总长度 |
 |--------|--------|----------|------|--------|
@@ -197,14 +333,15 @@ game_progress: 0=未开始, 1=准备, 2=自检, 3=倒计时, 4=比赛中, 5=结�
 
 | 包类型 | Header | 数据内容 | 校验 | 总长度 |
 |--------|--------|----------|------|--------|
-| 导航速度 | `0xA5 0x5A` | vx + vy + wz (float) | CRC8 | 15B |
+| 导航速度 (NYUSH) | `0xA5 0x5A` | vx + vy + wz + yaw_deg (4×float) | CRC8 | **19B** |
 | 机器人控制 | `0xA3` | stop_scan + spin_vel | CRC16 | 8B |
 
-**NavCmd / Twist (0xA5 0x5A):**
+**NavCmd (0xA5 0x5A) - 19 字节：**
 ```
-[0xA5][0x5A][vx:4B][vy:4B][wz:4B][CRC8:1B]
-vx, vy: m/s (底盘线速度)
+[0xA5][0x5A][vx:4B][vy:4B][wz:4B][yaw_deg:4B][CRC8:1B]
+vx, vy: m/s (底盘线速度，雷达系)
 wz: rad/s (底盘角速度)
+yaw_deg: 底盘在雷达/世界系下的 yaw（度），雷达 IMU 时有效
 CRC8 polynomial: 0x07
 ```
 
@@ -215,7 +352,7 @@ stop_gimbal_scan: 0=继续扫描, 1=停止扫描
 chassis_spin_vel: 底盘自旋速度 (rad/s)
 ```
 
-### 4.3 ROS2 Topic 对应关系
+### 4.5 ROS2 Topic 对应关系
 
 | C板数据 | ROS2 Topic | 消息类型 |
 |---------|------------|----------|
@@ -248,54 +385,257 @@ cmake .. && make -j$(nproc)
 sudo make install
 ```
 
-### 5.2 编译项目
+### 5.2 编译项目 (重要：顺序与 source 依赖)
+
+**⚠️ rm_navigation_ws 必须在其依赖已 source 的环境下构建：** `livox_ros_driver2` 在 `nav_ws` 中，需先 source `nav_ws` 再 build，否则 `ros2_livox_simulation` 报 `PackageNotFoundError`。
 
 ```bash
-# 编译导航模块
-cd rm_navigation_ws
-rosdep install -r --from-paths src --ignore-src --rosdistro humble -y
+# 1. 编译 nav_ws (含 livox_ros_driver2, Fast-LIO 等)
+cd ~/nav_ws
+source /opt/ros/humble/setup.bash
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+source install/setup.bash
+
+# 2. 编译 rm_vision_ws
+cd ~/sentry_planner/rm_vision_ws
+source /opt/ros/humble/setup.bash
 colcon build --symlink-install
 source install/setup.bash
 
-# 编译决策模块
-cd ../rm_decision_ws
-rosdep install -r --from-paths src --ignore-src --rosdistro humble -y
+# 3. 编译 rm_decision_ws
+cd ~/sentry_planner/rm_decision_ws
+source /opt/ros/humble/setup.bash
+source ~/sentry_planner/rm_vision_ws/install/setup.bash
 colcon build --symlink-install
 source install/setup.bash
 
-# 编译视觉模块 (可选)
-cd ../rm_vision_ws
-rosdep install -r --from-paths src --ignore-src --rosdistro humble -y
+# 4. 编译 rm_navigation_ws (关键：先 source nav_ws)
+cd ~/sentry_planner/rm_navigation_ws
+source /opt/ros/humble/setup.bash
+source ~/nav_ws/install/setup.bash          # 提供 livox_ros_driver2
 colcon build --symlink-install
 source install/setup.bash
 ```
 
-### 5.3 运行仿真
+**若 build 时出现 `package 'rm_navigation' not found`：** 需构建 `rm_navigation` 和 `fake_vel_transform`，使用 `colcon build --symlink-install` 全量构建即可。
+
+### 5.3 实车一键启动 (start_robot.sh)
+
+`sentry_planner/start_robot.sh` 自动完成：清理环境 → 雷达驱动 → TF → Fast-LIO → pointcloud_to_laserscan → Nav2 → 决策行为树 → RViz。
 
 ```bash
-# 终端1: 启动导航仿真
-cd rm_navigation_ws && source install/setup.bash
+cd ~/sentry_planner
+./start_robot.sh
+```
+
+**脚本内 source 顺序：** `nav_ws` → (决策启动时) `rm_vision_ws` → `rm_decision_ws`  
+**地图配置：** 实机用 `nav_ws/start_robot.sh` 时地图在脚本内配置；仿真用 RMUL；无雷达测试用 `run_test_a` 时固定 RMUL。
+
+### 5.5 运行仿真
+
+**导航模式**（推荐，使用已有 RMUL 地图 + AMCL 定位）：
+
+```bash
+# 终端1: 启动仿真 (需先 source nav_ws 再 source rm_navigation_ws)
+cd ~/sentry_planner/rm_navigation_ws
+source ~/nav_ws/install/setup.bash
+source install/setup.bash
 ros2 launch rm_nav_bringup bringup_sim.launch.py \
-  world:=RMUL \
-  mode:=mapping \
-  lio:=fastlio \
-  nav_rviz:=True
+  world:=RMUL mode:=nav localization:=amcl lio:=fastlio nav_rviz:=True
+```
 
-# 终端2: 启动决策树
-cd rm_decision_ws && source install/setup.bash
+启动后在 RViz 中点击 **2D Pose Estimate** 设置初始位姿，再通过 **Nav2 Goal** 发送目标。卡顿时可加 `headless:=True`。
+
+**建图模式**（需先建图再切 nav）：
+
+```bash
+ros2 launch rm_nav_bringup bringup_sim.launch.py \
+  world:=RMUL mode:=mapping lio:=fastlio nav_rviz:=True
+```
+
+**配合决策树完整联调**：
+
+```bash
+# 终端2: 决策树
+cd ~/sentry_planner/rm_decision_ws
+source ~/sentry_planner/rm_vision_ws/install/setup.bash
+source install/setup.bash
 ros2 launch rm_behavior_tree rm_behavior_tree.launch.py \
-  style:=./rm_behavior_tree/config/attack_left.xml
+  style:=retreat_attack_left use_sim_time:=True
 
-# 终端3: 模拟裁判系统数据 (测试用)
+# 终端3: 模拟裁判系统
 ros2 topic pub /game_status rm_decision_interfaces/msg/GameStatus \
   "{game_progress: 4, stage_remain_time: 180}"
 ```
 
-### 5.4 键盘控制测试
+详细配置与排障见 [5.9 Navigation 仿真进度与配置](#59-navigation-仿真进度与配置)。
 
+### 5.6 无雷达测试 (假传感器)
+
+无实车雷达时，可用假传感器测试 Nav2 + 决策。**推荐：无需仿真、无需实机。**
+
+```bash
+# 一键启动 (假传感器 + Nav2 + 决策 + game_status)，固定使用 RMUL 地图
+cd ~/sentry_planner
+unset MAP_YAML    # 避免环境变量覆盖为 11_map
+./scripts/run_test_a_headless.sh   # 无 RViz
+# 或
+./scripts/run_test_a.sh            # 含 RViz
+```
+
+手动分步启动见 `scripts/test_no_lidar.sh`。
+
+### 5.7 决策系统调试指南
+
+**不一定要跑仿真。** 决策树可在以下三种环境中测试，任选其一：
+
+| 方案 | 说明 | 依赖 |
+|------|------|------|
+| **A. 无雷达测试 (run_test_a)** | 假传感器 + Nav2 + 决策树 | 不需要仿真、不需要实机 |
+| **B. 仿真 (bringup_sim)** | Gazebo + 仿真机器人 + Nav2 + 决策树 | 需 GPU |
+| **C. 实机** | 真雷达 + FAST-LIO + Nav2 + 决策树 | 需实机 + 串口 |
+
+#### 决策调好 Todo List
+
+**1. Nav2 正常启动**
+- [ ] map_server 激活成功（无 `Failed to change state for node: map_server`）
+- [ ] 地图使用 **RMUL**（非 11_map）
+- [ ] `/map`、`/scan` 话题有数据
+
+**2. 决策树行为树配置**
+- [ ] **goal_pose 格式**：错误 `Can't convert string to PoseStamped` → 检查 XML/YAML 中 `goal_pose` 格式，需符合 `geometry_msgs/PoseStamped`
+- [ ] **Missing required input [message]**：检查 BT 节点端口定义
+
+**3. 决策与 Nav2 衔接**
+- [ ] `navigate_to_pose` 可用（无 `Action server is not reachable`）
+- [ ] 决策树需在 Nav2 完全启动后再启，或脚本中增加等待逻辑
+
+**4. 适配自定义配置**
+- [ ] 决策树中的目标点改为 RMUL 地图坐标
+- [ ] 实机时确认 `/cmd_vel` → 串口转发正确
+- [ ] 若用裁判系统，确认 `robot_hp` / `robot_status` / `game_status` 话题正确
+
+#### 推荐顺序
+
+1. 先用 **run_test_a** 跑通（无仿真、无实机）
+2. 修掉 map_server、goal_pose、Missing input 等问题
+3. 确认决策树能正常调用 `navigate_to_pose`
+4. 再切到仿真或实机完整联调
+
+#### 快速自检命令
+
+```bash
+# 1. 确保用 RMUL 地图（取消可能存在的 MAP_YAML 覆盖）
+unset MAP_YAML
+./scripts/run_test_a_headless.sh
+
+# 2. 检查 Nav2 是否就绪
+ros2 action list | grep navigate_to_pose
+ros2 topic list | grep -E "map|scan|cmd_vel"
+
+# 3. 行为树配置位置
+ls ~/sentry_planner/rm_decision_ws/src/rm_behavior_tree/config/
+```
+
+#### 详细排查清单（run_test_a 报错时）
+
+| 报错 | 原因 | 处理 |
+|------|------|------|
+| **地图仍是 11_map** | 环境变量 `MAP_YAML` 覆盖 | 运行前执行 `unset MAP_YAML`；脚本已改为固定 RMUL |
+| **Failed to change state for node: map_server** | map_server 生命周期激活失败 | ① `cd /tmp` 导致环境异常：尝试去掉 `cd /tmp` 在同一 shell 启动<br>② 地图路径错误：确认 RMUL.yaml 存在<br>③ nav2_bringup 与 my_nav2_params 不兼容 |
+| **Action server 'navigate_to_pose' is not reachable** | Nav2 未完全启动 | map_server 失败导致整链失败；先修 map_server，再增加 sleep 或等待 action 就绪 |
+| **Can't convert string [ 0] to double** | `goal_pose` 格式含前导空格 | `bt_conversions.hpp` 中 `parts[3]` 为 `" 0"`，需 trim；或改 XML 为 `0;0;0;0;0;0;1`（无空格） |
+| **Missing required input [message]** | `robot_status` / `robot_hp` 为空 | 无雷达测试无 C 板，不发布这些话题；需在 fake_sensors 中增加假 `robot_hp`、`robot_status` 发布 |
+| **SubAllRobotHP topic_name** | XML 为 `robot_hp`，C 板为 `/all_robot_hp` | 确认 topic 名一致，必要时改 XML 或加 remap |
+
+**run_test_a 启动顺序：** 假传感器(1) → Nav2(2) → 决策树(3) → game_status(4)。Nav2 需约 8s 才能就绪，决策树过早启动会报 `navigate_to_pose` 不可达。
+
+### 5.8 键盘控制测试 (固件调试)
+
+**ROS2 键盘：**
 ```bash
 ros2 run teleop_twist_keyboard teleop_twist_keyboard
 ```
+
+**直接串口 19 字节协议 (nyush-rm-control)：**
+```bash
+cd ~/path/to/nyush-rm-control/scripts
+python3 cmd_vel_keyboard_fixed.py --port /dev/ttyACM0 --speed 0.3 --keyboard
+```
+
+---
+
+## 5.9 Navigation 仿真进度与配置
+
+> **当前状态：Navigation 仿真已跑通**（2025-02）
+
+### 5.9.1 推荐启动命令
+
+```bash
+cd ~/sentry_planner/rm_navigation_ws
+source ~/nav_ws/install/setup.bash
+source install/setup.bash
+
+ros2 launch rm_nav_bringup bringup_sim.launch.py \
+  world:=RMUL mode:=nav localization:=amcl lio:=fastlio nav_rviz:=True
+```
+
+**使用步骤：**
+1. 启动后在 RViz 中点击 **2D Pose Estimate**，在地图上拖出机器人初始位姿（AMCL 需此才会发布 map 坐标系）
+2. 点击 **Nav2 Goal** 发送导航目标
+3. 若仍卡顿，可加 `headless:=True` 关闭 Gazebo GUI
+
+### 5.9.2 已完成的配置与优化
+
+#### Nav2 参数 (nav2_params_sim.yaml)
+
+| 类别 | 关键配置 | 说明 |
+|------|----------|------|
+| **全向轮** | min_y_velocity_threshold: 0.001 | 0.1 会截断小 y 速度，全向轮必须 0.001 |
+| **AMCL** | max_particles 5000, recovery_alpha_fast 0.1 | 支持全局定位与丢失恢复 |
+| **Controller** | controller_frequency 10 Hz | 平衡响应与 CPU 负载 |
+| **DWB** | vx_samples 15, vy_samples 5, sim_time 1.5 | 支持旋转 (max_vel_theta 1.0) |
+| **Costmap** | local 3×3m res 0.1, global res 0.1 | 参考 my_nav2_params |
+| **velocity_smoother** | max_velocity [0.5, 0.5, 5.0] | 限速 0.5 m/s，保留角速度 |
+
+参考文件：`sentry_planner/my_nav2_params.yaml`
+
+#### 轻量化配置（降低仿真卡顿）
+
+| 模块 | 优化项 |
+|------|--------|
+| **Gazebo** | 物理 100 Hz、关闭阴影 |
+| **Livox 仿真** | 点云 30000→8000、update_rate 10→5 Hz、downsample 2 |
+| **Fast-LIO** | point_filter_num 5、max_iteration 1、map_en false |
+| **Ground Segmentation** | n_bins 80、n_segments 180、n_threads 2 |
+| **headless 模式** | `headless:=True` 可完全关闭 Gazebo GUI |
+
+详细参数见：`rm_navigation_ws/src/rm_nav_bringup/config/simulation/`
+
+#### base_link_fake 与 fake_vel_transform
+
+- **用途**：云台与雷达共 yaw 轴时，使 Nav2 规划方向与云台/枪管朝向解耦
+- **流程**：Nav2 在 base_link_fake（路径朝向）下发 cmd_vel → fake_vel_transform 转换到 base_link → cmd_vel_chassis 给底盘
+- **仿真**：云台不转时 base_link_fake≈base_link，保留架构以便与实机一致
+
+### 5.9.3 仿真排障
+
+详见 `rm_navigation_ws/docs/仿真启动排障.md`。
+
+---
+
+## 5.10 下一步 TODO
+
+| 优先级 | 任务 | 说明 |
+|--------|------|------|
+| **P0** | 实机 Nav2 联调 | 使用 real launch、确认 my_nav2_params 在实机上的表现 |
+| **P0** | 决策树与仿真完整联调 | bringup_sim + rm_behavior_tree + game_status，验证攻击/撤退/占点逻辑 |
+| **P1** | 地图与初始位姿自动化 | 启动时自动设置 AMCL 初始位姿，减少手动 2D Pose Estimate |
+| **P1** | 裁判系统仿真/假数据 | 完善 fake_sensors 或增加裁判协议模拟，供决策树测试 |
+| **P1** | 实机串口与 cmd_vel 验证 | 确认 /cmd_vel → serial_sender/rm_serial_driver → C 板 19 字节协议正确 |
+| **P2** | Nav2 参数精细调优 | 根据 RMUL 场地和实际机器人尺寸微调 costmap、DWB、velocity_smoother |
+| **P2** | 云台小陀螺模式验证 | 实机或仿真中验证 fake_vel_transform 在云台旋转时的轨迹跟踪效果 |
+| **P2** | 建图流程文档化 | mapping 模式建图、保存、转 localization 的完整步骤 |
 
 ---
 
@@ -338,6 +678,12 @@ ros2 launch rm_behavior_tree rm_behavior_tree.launch.py
 | 串口权限 | `sudo chmod 666 /dev/ttyACM0` 或加入dialout组 |
 | Nav2路径规划失败 | 检查地图是否正确加载，costmap是否清除 |
 | 行为树不执行 | 检查 `/game_status` 是否发布，`game_progress` 是否为4 |
+| **Action server 'navigate_to_pose' is not reachable** | Nav2 未完全启动或 map_server 激活失败；决策树需在 Nav2 就绪后启动 |
+| **Can't convert string to PoseStamped** | 行为树 `goal_pose` 格式错误，检查 XML/YAML 中 `x;y;z; qx;qy;qz;qw` 是否符合 BT 要求 |
+| **Failed to change state for node: map_server** | map_server 生命周期激活失败；run_test_a 中 `cd /tmp` 可能影响环境，可尝试不切换目录启动 |
+| **rm_navigation_ws: package 'rm_navigation' not found** | 需 build `rm_navigation`、`fake_vel_transform`，执行 `colcon build --symlink-install` 全量构建 |
+| **rm_navigation_ws: livox_ros_driver2 not found** | 构建前先 `source ~/nav_ws/install/setup.bash` |
+| **source install/setup.bash 报 "not found" 或 "local_setup.bash"** | install 下的 setup 被污染了链式依赖，可 `rm -rf build install log` 后干净环境重建，或手动编辑 install/setup.bash 移除对 decision/vision 的 chain |
 
 ---
 
@@ -346,8 +692,11 @@ ros2 launch rm_behavior_tree rm_behavior_tree.launch.py
 - [BehaviorTree.CPP 官方文档](https://www.behaviortree.dev/)
 - [Navigation2 官方文档](https://navigation.ros.org/)
 - [FAST_LIO GitHub](https://github.com/hku-mars/FAST_LIO)
+- [Livox ROS Driver 2](https://github.com/Livox-SDK/livox_ros_driver2)
 - [SMBU 原始仓库](https://gitee.com/SMBU-POLARBEAR)
-- [NYUSH-RM C板代码](https://github.com/NYUSH-Robotics-Club/nyush-rm-control)
+- [NYUSH-RM C板代码 (nyush-rm-control)](https://github.com/NYUSH-Robotics-Club/nyush-rm-control)
+
+**补充文档：** `README(3).md` 含更详细的雷达选型、Nav2 参数、建图流程、性能指标等。
 
 ---
 

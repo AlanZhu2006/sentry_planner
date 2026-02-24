@@ -104,7 +104,7 @@ def generate_launch_description():
             Node(
                 package='nav2_lifecycle_manager',
                 executable='lifecycle_manager',
-                name='lifecycle_manager_localization',
+                name='lifecycle_manager_map',
                 output='screen',
                 arguments=['--ros-args', '--log-level', log_level],
                 parameters=[{'use_sim_time': use_sim_time},
@@ -127,7 +127,7 @@ def generate_launch_description():
             ComposableNode(
                 package='nav2_lifecycle_manager',
                 plugin='nav2_lifecycle_manager::LifecycleManager',
-                name='lifecycle_manager_localization',
+                name='lifecycle_manager_map',
                 parameters=[{'use_sim_time': use_sim_time,
                              'autostart': autostart,
                              'node_names': lifecycle_nodes}]),
