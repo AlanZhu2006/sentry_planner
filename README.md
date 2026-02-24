@@ -207,50 +207,185 @@ nyush-rm-control/                  # STM32 固件 (C 板)
 
 ## 三、行为树决策详解
 
+> 本节完整梳理 Behavior Tree 的架构、节点类型、数据流与决策逻辑。基于 **BehaviorTree.CPP** + **behaviortree_ros2** 框架。
+
+### 3.0 整体运行架构
+
+```
+rm_behavior_tree 节点启动
+    │
+    ├─ 1. 加载 BT XML 配置 (如 retreat_attack_left.xml)
+    ├─ 2. 注册所有插件到 BT::BehaviorTreeFactory
+    ├─ 3. 从 XML 创建树
+    ├─ 4. 启动 Groot2 发布 (端口 1667，用于可视化调试)
+    └─ 5. 主循环: tree.tickWhileRunning(10ms) 每 10ms 执行一次
+```
+
+**配置与启动：**
+
+| 配置项 | 说明 |
+|--------|------|
+| **style** | XML 文件名（不含 .xml），如 `retreat_attack_left`、`attack_left` |
+| **use_sim_time** | 仿真时设为 True |
+| **Groot2** | 端口 1667，可连接 Groot2 可视化调试 |
+
+```bash
+ros2 launch rm_behavior_tree rm_behavior_tree.launch.py style:=retreat_attack_left use_sim_time:=True
+```
+
 ### 3.1 行为树节点类型
 
-| 类型 | 节点名 | 功能 | 输入/输出 |
-|------|--------|------|-----------|
-| **Subscriber** | `SubAllRobotHP` | 订阅所有机器人血量 | → `{robot_hp}` |
-| | `SubRobotStatus` | 订阅本机状态 | → `{robot_status}` |
-| | `SubGameStatus` | 订阅比赛状态 | → `{game_status}` |
-| | `SubArmors` | 订阅装甲板检测结果 | → `{armors}` |
-| **Condition** | `IsGameTime` | 判断比赛阶段和剩余时间 | `game_progress`, `lower/higher_remain_time` |
-| | `IsStatusOK` | 判断血量/热量是否健康 | `hp_threshold`, `heat_threshold` |
-| | `IsDetectEnemy` | 是否检测到敌人装甲板 | `{armors}` |
-| | `IsAttacked` | 是否正在被攻击 | `{robot_status}.is_attacked` |
-| | `IsFriendOK` | 友方机器人是否存活 | `{robot_hp}`, `friend_color` |
-| | `IsOutpostOK` | 前哨站是否存活 | `{robot_hp}` |
-| **Action** | `SendGoal` | 发送导航目标点到Nav2 | `goal_pose="x;y;z; qx;qy;qz;qw"` |
-| | `RobotControl` | 控制云台扫描/底盘旋转 | `stop_gimbal_scan`, `chassis_spin_vel` |
-| | `MoveAround` | 躲避动作(受攻击时) | `expected_nearby_goal_count`, `expected_dis` |
-| | `GetCurrentLocation` | 获取当前位置 | → `{current_location}` |
-| **Decorator** | `RateController` | 限制执行频率 | `hz` |
+#### 3.1.1 数据订阅节点 (Subscriber / 黑板写入)
 
-### 3.2 决策逻辑示例 (attack_left.xml)
+每 tick 最先执行，将 ROS 话题写入黑板供其他节点读取：
+
+| 节点 | 订阅话题 | 黑板输出 | 消息类型 |
+|------|----------|----------|----------|
+| **SubAllRobotHP** | `robot_hp` | `{robot_hp}` | `AllRobotHP` (裁判系统) |
+| **SubRobotStatus** | `robot_status` | `{robot_status}` | `RobotStatus` (本机血量/热量/被攻击) |
+| **SubGameStatus** | `game_status` | `{game_status}` | `GameStatus` (比赛阶段、剩余时间) |
+| **SubArmors** | `/detector/armors` | `{armors}` | `Armors` (装甲板检测) |
+
+> 话题名可在 XML 中配置。数据来源：C 板裁判系统 → 串口 → rm_serial_driver；装甲板来自视觉 auto_aim。
+
+#### 3.1.2 条件节点 (Condition)
+
+纯判断，返回 SUCCESS / FAILURE：
+
+| 节点 | 输入 | 功能 |
+|------|------|------|
+| **IsGameTime** | message, game_progress, lower/higher_remain_time | 比赛阶段与剩余时间是否在区间内。game_progress: 0=未开始, 1=准备, 2=自检, 3=倒计时, **4=比赛中**, 5=结算 |
+| **IsStatusOK** | message, hp_threshold, heat_threshold | 血量≥阈值 且 热量≤阈值 |
+| **IsDetectEnemy** | message (armors) | 是否检测到有效敌人装甲板 |
+| **IsAttacked** | message (robot_status) | 是否正在被攻击 (is_attacked) |
+| **IsFriendOK** | message (robot_hp), friend_color | 友方机器人是否存活 |
+| **IsOutpostOK** | message (robot_hp) | 前哨站是否存活 |
+
+#### 3.1.3 动作节点 (Action)
+
+执行具体任务：
+
+| 节点 | 类型 | 功能 |
+|------|------|------|
+| **SendGoal** | BT Action → Nav2 | 调用 `navigate_to_pose`，发送导航目标。goal_pose 格式 `x;y;z; qx;qy;qz;qw` |
+| **RobotControl** | Topic 发布 | 发布 `/robot_control`，控制云台扫描开关、底盘自旋速度 |
+| **GetCurrentLocation** | TF 查询 | 查询 map→base_link 变换，输出到 `{current_location}` |
+| **MoveAround** | 自定义 | 以当前位置为圆心、expected_dis 为半径，生成随机点并发送导航目标，用于受攻击时躲避 |
+
+#### 3.1.4 装饰节点 (Decorator)
+
+| 节点 | 功能 |
+|------|------|
+| **RateController** | 限制子节点 tick 频率（如 hz=1 即每秒最多执行一次），防止 SendGoal 等频繁触发 |
+
+### 3.2 控制流节点 (XML 中)
+
+| 节点 | 语义 |
+|------|------|
+| **ReactiveSequence** | 顺序执行；任一子节点 FAILURE 则整枝 FAILURE；每 tick 重新评估前面的子节点（可中断后续） |
+| **Sequence** | 顺序执行；前一个 SUCCESS 才执行下一个 |
+| **AsyncSequence** | 异步顺序，子节点可并发/异步执行 |
+| **Fallback** | 从左到右，第一个 SUCCESS 则整枝 SUCCESS；全 FAILURE 则 FAILURE |
+| **WhileDoElse** | `while (条件) { 主分支 } else { 备选分支 }`。条件 SUCCESS 执行主分支，FAILURE 执行备选 |
+
+### 3.3 黑板 (Blackboard) 与端口
+
+节点通过黑板键共享数据：
+
+| 黑板键 | 类型 | 来源 |
+|--------|------|------|
+| `{robot_hp}` | AllRobotHP | SubAllRobotHP |
+| `{robot_status}` | RobotStatus | SubRobotStatus |
+| `{game_status}` | GameStatus | SubGameStatus |
+| `{armors}` | Armors | SubArmors |
+| `{current_location}` | TransformStamped | GetCurrentLocation |
+
+**goal_pose 格式**：`x;y;z; qx;qy;qz;qw`，由 `bt_conversions.hpp` 解析为 `PoseStamped`。
+
+### 3.4 决策逻辑详解 (retreat_attack_left.xml)
+
+完整逻辑树结构：
+
+```
+ReactiveSequence (每 tick 先刷新数据)
+├─ SubAllRobotHP, SubArmors, SubRobotStatus, SubGameStatus
+└─ WhileDoElse [比赛进行中? game_progress=4]
+    │
+    ├─ TRUE → ReactiveSequence (比赛主逻辑)
+    │   ├─ WhileDoElse [检测到敌人?]
+    │   │   ├─ TRUE  → RobotControl(停止云台扫描, 底盘自旋 0.5)
+    │   │   └─ FALSE → RobotControl(继续扫描, 底盘自旋 0.5)
+    │   │
+    │   └─ WhileDoElse [检测到敌人 且 状态OK? (HP>400, Heat<350)]
+    │       ├─ TRUE → WhileDoElse [正在被攻击?]
+    │       │   ├─ TRUE  → GetCurrentLocation + MoveAround (躲避)
+    │       │   └─ FALSE → Fallback [血量<250? 可打断导航]
+    │       │       ├─ TRUE  → SendGoal(补给区 -2.5,4.07)
+    │       │       └─ FALSE → 保持当前导航
+    │       │
+    │       └─ FALSE → WhileDoElse [状态OK?]
+    │           ├─ TRUE → WhileDoElse [被攻击?]
+    │           │   ├─ TRUE  → 躲避
+    │           │   └─ FALSE → WhileDoElse [时间段?]
+    │           │       ├─ 3:20-4:05 → SendGoal(占领中心 3.0,0.4)
+    │           │       └─ 其他 → WhileDoElse [友方OK?]
+    │           │           ├─ TRUE  → SendGoal(进攻左路 5.1,1.9)
+    │           │           └─ FALSE → SendGoal(守中心 3,1)
+    │           └─ FALSE → SendGoal(撤退到补给区)
+    │
+    └─ FALSE → ReactiveSequence (比赛未进行)
+        └─ SendGoal(回基地 0,0,0) + RobotControl(停止自旋)
+```
+
+**简化版 (attack_left.xml 同构)：**
 
 ```
 比赛进行中 (game_progress=4)?
 ├─ 是 → 
-│   ├─ 检测到敌人?
-│   │   ├─ 是 → RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.5)
-│   │   └─ 否 → RobotControl(stop_gimbal_scan=False, chassis_spin_vel=0.5)
-│   │
-│   ├─ 检测到敌人 AND 状态OK (HP>400, Heat<350)?
-│   │   ├─ 被攻击中? → 躲避动作 (MoveAround)
-│   │   └─ 血量<250? → 撤退到补给区 (-2.5, 4.07)
-│   │
-│   ├─ 状态OK?
-│   │   ├─ 时间在 3:20-4:05? → 占领中心 (3.0, 0.4)
-│   │   ├─ 友方OK? → 进攻左路 (5.1, 1.9)
-│   │   └─ 友方不OK? → 守中心 (3, 1)
-│   │
+│   ├─ 检测到敌人? → 停止/继续云台扫描 + 底盘自旋 0.5
+│   ├─ 检测到敌人 且 状态OK? → 被攻击? 躲避 : 血量<250? 撤退
+│   ├─ 状态OK? → 被攻击? 躲避 : 3:20-4:05? 占中心 : 友方OK? 攻左路 : 守中心
 │   └─ 状态不OK → 撤退到补给区
-│
-└─ 否 → 待机 (等待比赛开始)
+└─ 否 → 回基地 + 停止自旋
 ```
 
-### 3.3 自定义行为树
+### 3.5 插件注册与依赖
+
+`rm_behavior_tree.cpp` 中注册顺序：
+
+```cpp
+// 订阅类 (需 params_update_msg)
+sub_all_robot_hp, sub_robot_status, sub_game_status, sub_armors
+
+// 条件/动作 (普通插件)
+rate_controller, is_game_time, is_status_ok, is_detect_enemy, is_attacked,
+is_friend_ok, is_outpost_ok, get_current_location, move_around
+
+// 需 RosNodeParams
+send_goal      (params_send_goal, 默认 goal_pose)
+robot_control  (params_robot_control, 默认 robot_control)
+```
+
+**依赖包**：`behaviortree_cpp`、`behaviortree_ros2`、`nav2_msgs`、`rm_decision_interfaces`、`auto_aim_interfaces`。
+
+### 3.6 与 Nav2 对接
+
+- **SendGoal** 调用 Nav2 的 `navigate_to_pose` Action。
+- 目标点来自 XML 中的 `goal_pose`（如 `5.1;1.9;0; 0;0;0;1`）。
+- Nav2 输出 `/cmd_vel` → `fake_vel_transform` 转换 → `/cmd_vel_chassis` → 底盘。
+- 行为树只发导航目标，不直接控制底盘速度。
+
+### 3.7 可用配置文件
+
+| 文件 | 策略 |
+|------|------|
+| `retreat_attack_left.xml` | 撤退 + 进攻左路（推荐） |
+| `attack_left.xml` | 进攻左路 |
+| `attack_right.xml` | 进攻右路 |
+| `protect_supply.xml` | 守补给区 |
+| `rmuc_01.xml` | RMUC 策略 |
+
+### 3.8 自定义行为树
 
 编辑 `rm_decision_ws/rm_behavior_tree/config/` 下的 XML 文件:
 
