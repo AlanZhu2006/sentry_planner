@@ -108,13 +108,6 @@ cd ~/sentry_planner
 # mode:=nav + localization:=slam_toolbox = 加载预存 RMUL 地图，RViz 立即可见
 # mode:=mapping = 从零建图，需机器人移动后地图才会逐渐出现
 cd ~/sentry_planner/rm_navigation_ws
-source /opt/ros/humble/setup.bash
-source ~/nav_ws/install/setup.bash
-source install/setup.bash
-ros2 launch rm_nav_bringup bringup_sim.launch.py \
-  world:=RMUL mode:=nav localization:=amcl lio:=fastlio nav_rviz:=True
-
-cd ~/sentry_planner/rm_navigation_ws
 source ~/nav_ws/install/setup.bash
 source ~/sentry_planner/rm_navigation_ws/install/setup.bash
 ros2 launch rm_nav_bringup bringup_sim.launch.py \
@@ -126,6 +119,8 @@ source ~/sentry_planner/rm_decision_ws/install/setup.bash
 ros2 launch rm_behavior_tree rm_behavior_tree.launch.py \
   style:=retreat_attack_left use_sim_time:=True
   
-
+# 终端 2：启动 Groot2(1667)
+cd ~/Downloads
+./Groot2-v1.9.0-x86_64.AppImage
   
 

@@ -16,7 +16,7 @@
 | [三](#三行为树决策详解) | 行为树决策详解 |
 | [四](#四上下位机通信协议) | 上下位机通信协议 |
 | [五](#五快速开始) | 快速开始 (含 build 顺序、start_robot、无雷达测试) |
-| [五.7](#57-决策系统调试指南) | 决策系统调试指南 (Todo + 必修问题) |
+| [五.7](#57-决策系统调试指南) | 决策系统调试指南 (含 Groot2 可视化调试、Todo、排障) |
 | [五.9](#59-navigation-仿真进度与配置) | Navigation 仿真进度与配置 (2025-02) |
 | [五.10](#510-下一步-todo) | 下一步 TODO |
 | [六](#六实车部署) | 实车部署 |
@@ -28,6 +28,16 @@
 ## 〇、NYUSH 适配与变更记录 / Change Log
 
 > 本节记录 NYUSH Robotics 对原始 SMBU 框架所做的全部修改及当前架构。
+
+### 0.0 当前进度总览 (2025-02)
+
+| 模块 | 状态 | 说明 |
+|------|------|------|
+| **Navigation 仿真** | ✓ 跑通 | bringup_sim + RMUL 地图 + AMCL + Nav2，支持 2D Pose Estimate + Nav2 Goal |
+| **决策行为树** | ✓ 跑通 | retreat_attack_left 等预设，goal_pose 解析已修复，与 Nav2 对接正常 |
+| **Groot2 调试** | ✓ 可用 | 端口 1667，Monitor 模式实时查看节点状态；免费版限 20 节点 |
+| **无雷达测试** | ✓ 可用 | run_test_a / run_test_a_headless，假传感器 + Nav2 + 决策，无需仿真/实机 |
+| **实机联调** | 进行中 | 待验证串口、my_nav2_params、裁判系统话题 |
 
 ### 0.1 固件层 (nyush-rm-control) 变更
 
@@ -53,6 +63,7 @@
 | **start_robot.sh** | 在 Nav2 之后增加决策行为树启动，依次 source `nav_ws` → `rm_vision_ws` → `rm_decision_ws`，`style:=retreat_attack_left` |
 | **rm_navigation_ws install/setup.bash** | 移除对 `rm_decision_ws`、`rm_vision_ws` 的链式依赖，避免 "not found" 报错 |
 | **rm_decision_ws** | 修改 `is_detect_enemy.hpp` 去掉 `armors__struct.hpp` 依赖；CMakeLists 增加 `auto_aim_interfaces` 依赖 |
+| **rm_behavior_tree** | `bt_conversions.hpp` 增加 `parseDouble` 处理 goal_pose 前导空格（如 `" 0"`）；`send_goal.cpp` 必须 `#include "rm_behavior_tree/bt_conversions.hpp"` 否则解析失败 |
 | **rm_navigation_ws 构建** | 需先 `source ~/nav_ws/install/setup.bash` 再 `colcon build`，否则 `ros2_livox_simulation` 找不到 `livox_ros_driver2` |
 | **rm_nav_bringup 依赖** | 需构建 `rm_navigation`、`fake_vel_transform`，否则 launch 报 `PackageNotFoundError` |
 | **nav2_params_sim.yaml** | 对齐 my_nav2_params：min_y_velocity_threshold 0.001、AMCL 粒子数、costmap 参数；保留旋转 (max_vel_theta) |
@@ -657,6 +668,35 @@ unset MAP_YAML    # 避免环境变量覆盖为 11_map
 3. 确认决策树能正常调用 `navigate_to_pose`
 4. 再切到仿真或实机完整联调
 
+#### Groot2 可视化调试
+
+**启动顺序**：先启动 behavior tree，再启动 Groot2（Groot2 作为客户端连接端口 1667）。
+
+```bash
+# 终端 1: 启动 behavior tree
+source ~/sentry_planner/rm_vision_ws/install/setup.bash
+source ~/sentry_planner/rm_decision_ws/install/setup.bash
+ros2 launch rm_behavior_tree rm_behavior_tree.launch.py style:=retreat_attack_left use_sim_time:=True
+
+# 终端 2: 启动 Groot2
+cd ~/Groot2/bin && ./groot2   # 或使用 AppImage: ./Groot2-*-x86_64.AppImage
+```
+
+**连接步骤**：1) 打开 `rm_decision_ws/rm_behavior_tree/config/Project.btproj`；2) 切换到 Monitor 模式；3) Connect → `localhost:1667`。
+
+**节点颜色**：🟢 SUCCESS | 🔴 FAILURE | 🟡 RUNNING | ⚪ IDLE。可实时观察执行路径、失败节点、循环逻辑。
+
+**20 节点限制**：免费版 Monitor 仅支持 ≤20 节点。解决方案：建简化版 XML（如 `retreat_attack_left_debug.xml`）只保留待调试分支；或配合 `RCLCPP_INFO`、`ros2 topic echo` 日志调试。
+
+**典型调试流程**：
+
+| 现象 | Groot2 观察 | 后续 |
+|------|-------------|------|
+| 哨兵不移动 | 哪个 SendGoal 在跑？黄/红/绿？ | 检查 Nav2、地图、goal_pose |
+| 不回家/不补血 | SendGoal Home/SupplyArea 所在 Fallback 分支 | 看前置 IsStatusOK 等条件是否阻断了该分支 |
+| 一直转云台 | RobotControl 在 WhileDoElse 中 | 检查 IsDetectEnemy 是否一直 false |
+| 被攻击无反应 | IsAttacked 所在分支 | 检查 robot_status 话题、IsAttacked 逻辑 |
+
 #### 快速自检命令
 
 ```bash
@@ -679,7 +719,7 @@ ls ~/sentry_planner/rm_decision_ws/src/rm_behavior_tree/config/
 | **地图仍是 11_map** | 环境变量 `MAP_YAML` 覆盖 | 运行前执行 `unset MAP_YAML`；脚本已改为固定 RMUL |
 | **Failed to change state for node: map_server** | map_server 生命周期激活失败 | ① `cd /tmp` 导致环境异常：尝试去掉 `cd /tmp` 在同一 shell 启动<br>② 地图路径错误：确认 RMUL.yaml 存在<br>③ nav2_bringup 与 my_nav2_params 不兼容 |
 | **Action server 'navigate_to_pose' is not reachable** | Nav2 未完全启动 | map_server 失败导致整链失败；先修 map_server，再增加 sleep 或等待 action 就绪 |
-| **Can't convert string [ 0] to double** | `goal_pose` 格式含前导空格 | `bt_conversions.hpp` 中 `parts[3]` 为 `" 0"`，需 trim；或改 XML 为 `0;0;0;0;0;0;1`（无空格） |
+| **Can't convert string [ 0] to double** | `goal_pose` 格式含前导空格 | 已修复：`bt_conversions.hpp` 使用 `parseDouble` trim；`send_goal.cpp` 需 `#include "rm_behavior_tree/bt_conversions.hpp"`。修改后需 `colcon build --packages-select rm_behavior_tree` |
 | **Missing required input [message]** | `robot_status` / `robot_hp` 为空 | 无雷达测试无 C 板，不发布这些话题；需在 fake_sensors 中增加假 `robot_hp`、`robot_status` 发布 |
 | **SubAllRobotHP topic_name** | XML 为 `robot_hp`，C 板为 `/all_robot_hp` | 确认 topic 名一致，必要时改 XML 或加 remap |
 
@@ -765,6 +805,8 @@ ros2 launch rm_nav_bringup bringup_sim.launch.py \
 |--------|------|------|
 | **P0** | 实机 Nav2 联调 | 使用 real launch、确认 my_nav2_params 在实机上的表现 |
 | **P0** | 决策树与仿真完整联调 | bringup_sim + rm_behavior_tree + game_status，验证攻击/撤退/占点逻辑 |
+| ✓ | 决策树 goal_pose 解析 | bt_conversions.hpp parseDouble + send_goal.cpp include，已修复 "Can't convert string [ 0] to double" |
+| ✓ | Groot2 调试文档 | 5.7 节已补充 Groot2 使用步骤、连接方式、节点颜色、20 节点限制及典型调试流程 |
 | **P1** | 地图与初始位姿自动化 | 启动时自动设置 AMCL 初始位姿，减少手动 2D Pose Estimate |
 | **P1** | 裁判系统仿真/假数据 | 完善 fake_sensors 或增加裁判协议模拟，供决策树测试 |
 | **P1** | 实机串口与 cmd_vel 验证 | 确认 /cmd_vel → serial_sender/rm_serial_driver → C 板 19 字节协议正确 |
