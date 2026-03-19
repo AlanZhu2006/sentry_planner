@@ -21,11 +21,11 @@
     }"
   ```
 
-- robot_hp
+- all_robot_hp
 
     ```zsh
     source install/setup.zsh
-    ros2 topic pub -r 3 /robot_hp rm_decision_interfaces/msg/AllRobotHP "{
+    ros2 topic pub -r 3 /all_robot_hp rm_decision_interfaces/msg/AllRobotHP "{
         red_1_robot_hp: 200,
         red_2_robot_hp: 90,
         red_3_robot_hp: 100,

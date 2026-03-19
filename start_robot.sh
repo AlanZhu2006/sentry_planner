@@ -88,21 +88,27 @@ ros2 launch nav2_bringup bringup_launch.py \
     map:=$HOME/sentry_planner/rm_navigation_ws/src/rm_nav_bringup/map/RMUL.yaml \
     params_file:=/home/nyu/nav_ws/my_nav2_params.yaml &
 
-echo ">>> [8/10] 等待 Nav2 启动 (8秒)..."
+echo ">>> [8/11] 等待 Nav2 启动 (8秒)..."
 sleep 8
 
-echo ">>> [9/10] 启动决策行为树..."
+echo ">>> [9/11] 启动行为树通讯适配层..."
 source ~/sentry_planner/rm_vision_ws/install/setup.bash
 source ~/sentry_planner/rm_decision_ws/install/setup.bash
+(python3 ~/sentry_planner/scripts/bt_comm_adapter.py) &
+
+sleep 2
+
+echo ">>> [10/11] 启动决策行为树..."
 ros2 launch rm_behavior_tree rm_behavior_tree.launch.py \
     style:=retreat_attack_left \
     use_sim_time:=False &
 
 sleep 2
 
-echo ">>> [10/10] 启动完成！"
+echo ">>> [11/11] 启动完成！"
 echo "-----------------------------------------------------"
 echo ">>> 机器人端所有节点已启动！（含决策行为树）"
+echo ">>> 行为树通讯适配层已启动：/detector/armors, /all_robot_hp, /robot_status, /game_status, /cmd_vel_chassis_bt"
 echo ">>> 请在【你的笔记本电脑】上打开终端运行: rviz2"
 echo ">>> 按 Ctrl+C 可以停止脚本并关闭所有节点"
 echo ""

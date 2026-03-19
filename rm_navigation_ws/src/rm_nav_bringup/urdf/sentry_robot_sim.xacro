@@ -16,6 +16,10 @@
   <!-- base_link to livox_frame -->
   <xacro:arg name="xyz" default="0.12 0.0 0.175" />
   <xacro:arg name="rpy" default="0 0 0" />
+  <!-- true: 仿真用 Gazebo 里程计，定位更稳；false: 用 Fast-LIO 提供 odom -->
+  <xacro:arg name="use_gazebo_odom" default="false" />
+  <!-- 直接用 $(arg ...) 赋值，在条件里比较字符串 -->
+  <xacro:property name="use_gazebo_odom_val" value="$(arg use_gazebo_odom)" />
 
   <link name="dummy"/>
 
@@ -207,27 +211,35 @@
   <gazebo>
     <plugin name="mecanum_controller" filename="libgazebo_ros_planar_move.so">
       <ros>
-        <!-- Add a namespace -->
         <namespace>/</namespace>
-        <!-- Remap the default topic -->
         <remapping>cmd_vel:=cmd_vel_chassis</remapping>
-        <remapping>odom:=odom</remapping>
+        <!-- use_gazebo_odom 时发布到 /Odometry，与 Nav2/velocity_smoother 一致 -->
+        <xacro:if value="${'$(arg use_gazebo_odom)' == 'true'}">
+          <remapping>odom:=Odometry</remapping>
+        </xacro:if>
+        <xacro:unless value="${'$(arg use_gazebo_odom)' == 'true'}">
+          <remapping>odom:=odom</remapping>
+        </xacro:unless>
       </ros>
-
-      <!-- Set control loop update rate -->
       <update_rate>100</update_rate>
-      <!-- Set odom publish rate -->
       <publish_rate>10</publish_rate>
-
-      <!-- Set if odom required -->
-      <publish_odom>false</publish_odom>
-      <publish_odom_tf>false</publish_odom_tf>
-
-      <!-- Frame IDs -->
+      <!-- use_gazebo_odom 时由 Gazebo 发布 odom->base_link，AMCL 用其作运动模型，定位更稳 -->
+      <xacro:if value="${'$(arg use_gazebo_odom)' == 'true'}">
+        <publish_odom>true</publish_odom>
+        <publish_odom_tf>true</publish_odom_tf>
+      </xacro:if>
+      <xacro:unless value="${'$(arg use_gazebo_odom)' == 'true'}">
+        <publish_odom>false</publish_odom>
+        <publish_odom_tf>false</publish_odom_tf>
+      </xacro:unless>
       <odometry_frame>odom</odometry_frame>
-      <robot_base_frame>base_link</robot_base_frame>
-
-      <!-- Set odom covariance -->
+      <!-- use_gazebo_odom 时发布 odom->dummy，让 robot_state_publisher 的 dummy->base_link 接续，避免 base_link 有两个父节点 -->
+      <xacro:if value="${'$(arg use_gazebo_odom)' == 'true'}">
+        <robot_base_frame>dummy</robot_base_frame>
+      </xacro:if>
+      <xacro:unless value="${'$(arg use_gazebo_odom)' == 'true'}">
+        <robot_base_frame>base_link</robot_base_frame>
+      </xacro:unless>
       <covariance_x>0.0001</covariance_x>
       <covariance_y>0.0001</covariance_y>
       <covariance_yaw>0.01</covariance_yaw>

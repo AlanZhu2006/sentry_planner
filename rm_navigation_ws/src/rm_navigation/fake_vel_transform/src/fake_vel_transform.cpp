@@ -21,6 +21,8 @@ FakeVelTransform::FakeVelTransform(const rclcpp::NodeOptions & options)
   // Declare and get the spin speed parameter
   this->declare_parameter<float>("spin_speed", -6.0);
   this->get_parameter("spin_speed", spin_speed_);
+  this->declare_parameter<bool>("use_nav_wz", false);
+  this->get_parameter("use_nav_wz", use_nav_wz_);
 
   // TF broadcaster
   tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
@@ -70,7 +72,10 @@ void FakeVelTransform::cmdVelCallback(const geometry_msgs::msg::Twist::SharedPtr
     double angle_diff = -current_angle_;
 
     geometry_msgs::msg::Twist aft_tf_vel;
-    aft_tf_vel.angular.z = (msg->angular.z != 0) ? spin_speed_ : 0;
+    // During early sentry bring-up we often want Nav2 to provide only vx/vy.
+    // Keep wz disabled by default and only enable the old spin-speed behavior
+    // when use_nav_wz=true.
+    aft_tf_vel.angular.z = (use_nav_wz_ && msg->angular.z != 0.0) ? spin_speed_ : 0.0;
     aft_tf_vel.linear.x = msg->linear.x * cos(angle_diff) + msg->linear.y * sin(angle_diff);
     aft_tf_vel.linear.y = -msg->linear.x * sin(angle_diff) + msg->linear.y * cos(angle_diff);
 

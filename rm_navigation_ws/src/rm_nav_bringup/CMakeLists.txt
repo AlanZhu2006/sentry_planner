@@ -15,6 +15,7 @@ endif()
 
 # 安装仿真用点云转激光脚本到 share，便于 launch  reliably 找到
 install(PROGRAMS scripts/pointcloud_to_laserscan_sim.py DESTINATION share/${PROJECT_NAME}/scripts)
+install(PROGRAMS scripts/odom_to_tf.py DESTINATION share/${PROJECT_NAME}/scripts)
 
 ament_auto_package(
   INSTALL_TO_SHARE

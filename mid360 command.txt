@@ -1,126 +1,154 @@
-start with one command!!! (nav2)
-----------------------------
-~/nav_ws/start_robot.sh
+CURRENT DEBUG FLOW
+==================
 
-1. Launch Unilidar --- releasing topic /unilidar/cloud and /unilidar/imu (directly copy to activate):
-
-cd ~/nav_ws
-source install/setup.bash
-ros2 launch livox_ros_driver2 msg_MID360_launch.py
-
-
-2. Release topic /Odometry:
-
-export LD_PRELOAD=/lib/x86_64-linux-gnu/libusb-1.0.so.0
-cd ~/nav_ws
-source install/setup.bash
-ros2 launch fast_lio mapping.launch.py config_file:=mid360.yaml
+当前只保留我们现在真的在调的链路：
+- RMUL2026 Gazebo 仿真
+- Nav2
+- `center_attack_simple`
+- 手动调 “去中心 / 守中 / 回家”
 
 
-3.1 mapping and save (first map then nav)
-
-see pointcloud:
-export LD_PRELOAD=/lib/x86_64-linux-gnu/libusb-1.0.so.0
-cd ~/nav_ws/src/FAST_LIO/PCD/
-pcl_viewer scans.pcd
-
-ROTATE pointcloud:(the address should be changed in pcd2pgm config depending on LIO)
-cd ~/nav_ws/src/FAST_LIO/PCD
-python3 rotate_pcd.py
-
-3d PCD to 2d pgm:
-export LD_PRELOAD=/lib/x86_64-linux-gnu/libusb-1.0.so.0
-cd ~/nav_ws
-source install/setup.bash
-ros2 launch pcd2pgm pcd2pgm_launch.py
-
-使用 nav2 工具保存:
-cd ~/Desktop/map
-ros2 run nav2_map_server map_saver_cli -f 11_map
-
-3.2 Activate navigation 2
-
-连通 Nav2 和 LIO:
-ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom camera_init &
-ros2 run tf2_ros static_transform_publisher 0 0 0 0 -0.873 0 body base_link &
-ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 base_link base_footprint &
-
-运行转换节点 (注意 cloud_in 对应你的雷达话题):
-ros2 run pointcloud_to_laserscan pointcloud_to_laserscan_node --ros-args \
--p target_frame:=base_link \
--p transform_tolerance:=0.01 \
--p min_height:=-0.4 \
--p max_height:=1.0 \
--p angle_min:=-3.1415 \
--p angle_max:=3.1415 \
--p range_min:=0.1 \
--p range_max:=20.0 \
--p use_inf:=true \
--p qos_overrides./cloud_in.reliability:=best_effort \
--r cloud_in:=/cloud_registered \
--r scan:=/scan &
-
-open nav2:
-ros2 launch nav2_bringup bringup_launch.py \
-    use_sim_time:=False \
-    map:=/home/nyu/Desktop/map/11_map.yaml \
-    params_file:=/home/nyu/nav_ws/my_nav2_params.yaml &
-    
-open rviz:
-ros2 run rviz2 rviz2 -d $(ros2 pkg prefix nav2_bringup)/share/nav2_bringup/rviz/nav2_default_view.rviz
-
-3.2.1 autonomous navigation:(after nav2 goal)
-订阅 /cmd_vel -> 提取数据 -> 通过串口发送给底盘
-# 方式1: ROS2模式（推荐）- 自动订阅 /cmd_vel 话题并转发到底盘
-sudo chmod 777 /dev/ttyACM0
-cd ~/Desktop
-source ~/nav_ws/install/setup.bash
-python3 serial_sender.py --port /dev/ttyACM0 --baud 115200 --ros2
-
-# 方式2: keyboard control（推荐）
-sudo chmod 777 /dev/ttyACM0
-cd ~/Desktop
-source ~/nav_ws/install/setup.zsh
-python3 serial_sender.py --port /dev/ttyACM0 --keyboard --speed 1.0
-
-# 方式3: 直接发送速度命令（测试用）
-sudo chmod 777 /dev/ttyACM0
-cd ~/Desktop
-source ~/nav_ws/install/setup.bash
-python3 serial_sender.py --port /dev/ttyACM0 --vx -0.5 --vy 0.0 --wz 0.0 --duration 0.1
-
-
-
-
-  # 1. 重新编译行为树
+0. 只在改过行为树代码后才重新编译
+--------------------------------
 cd ~/sentry_planner/rm_decision_ws
-source /opt/ros/humble/setup.bash
-source ~/sentry_planner/rm_vision_ws/install/setup.bash
+source /opt/ros/humble/setup.zsh
+source ~/sentry_planner/rm_vision_ws/install/setup.zsh
 colcon build --symlink-install --packages-select rm_behavior_tree
 
-# 2. 运行方案 A 测试
-cd ~/sentry_planner
-./scripts/run_test_a.sh
 
-
-# 终端 1：仿真（含 Gazebo、Fast-LIO、Nav2、RViz）
-# 若 /scan 无数据：已用自写 pointcloud_to_laserscan_sim（始终订阅，无懒订阅）替代官方节点
-# mode:=nav + localization:=slam_toolbox = 加载预存 RMUL 地图，RViz 立即可见
-# mode:=mapping = 从零建图，需机器人移动后地图才会逐渐出现
+1. 终端 1：启动 Gazebo + Nav2 + RViz
+-----------------------------------
 cd ~/sentry_planner/rm_navigation_ws
-source ~/nav_ws/install/setup.bash
-source ~/sentry_planner/rm_navigation_ws/install/setup.bash
+source ~/nav_ws/install/setup.zsh
+source install/setup.zsh
 ros2 launch rm_nav_bringup bringup_sim.launch.py \
-  world:=RMUL mode:=nav localization:=amcl lio:=fastlio nav_rviz:=True
+  world:=RMUL2026 mode:=nav localization:=amcl use_gazebo_odom:=true nav_rviz:=True
 
-# 终端 2：决策树 (use_sim_time:=True)
-source ~/sentry_planner/rm_vision_ws/install/setup.bash
-source ~/sentry_planner/rm_decision_ws/install/setup.bash
-ros2 launch rm_behavior_tree rm_behavior_tree.launch.py \
-  style:=retreat_attack_left use_sim_time:=True
-  
-# 终端 2：启动 Groot2(1667)
-cd ~/Downloads
+
+2. 终端 2：启动持续调试会话
+---------------------------
+# 这个脚本会一直保活：
+# - bt_comm_adapter
+# - center_attack_simple
+# - watch_center_attack_state.py
+#
+# 用它来长期调 “回家 / 守中”
+# 不要和一次性的 smoke test 混着用
+bash ~/sentry_planner/scripts/run_center_attack_debug_session.sh
+
+
+3. 终端 3：先 source 再手动发输入
+---------------------------------
+source /opt/ros/humble/setup.zsh
+source ~/sentry_planner/rm_decision_ws/install/setup.zsh
+
+
+4. 去中心
+---------
+# 游戏开始 + 状态正常
+ros2 topic pub -r 1 /game_status rm_decision_interfaces/msg/GameStatus \
+  "{game_progress: 4, stage_remain_time: 220}"
+
+ros2 topic pub -r 10 /robot_status rm_decision_interfaces/msg/RobotStatus \
+  "{robot_id: 7, current_hp: 600, shooter_heat: 0, team_color: false, is_attacked: false}"
+
+# 期望：
+# - watcher 显示 APPROACH_CENTER
+# - 机器人往 Center2026 (6.33, 4.32) 走
+
+
+5. 守中
+-------
+# 保持上面的健康状态不变
+# 等机器人自己走到中心附近
+#
+# 期望：
+# - watcher 从 APPROACH_CENTER 切到 CENTER_HOLD_ATTACK
+# - d_center < 0.35
+# - stop_scan=True
+# - spin=0.5
+
+
+6. 低血回家
+-----------
+ros2 topic pub -r 10 /robot_status rm_decision_interfaces/msg/RobotStatus \
+  "{robot_id: 7, current_hp: 200, shooter_heat: 0, team_color: false, is_attacked: false}"
+
+# 期望：
+# - watcher 显示 HOME_RECOVER
+# - d_home 逐渐减小
+# - stop_scan=False
+# - spin=0.0
+
+
+7. 高热回家
+-----------
+ros2 topic pub -r 10 /robot_status rm_decision_interfaces/msg/RobotStatus \
+  "{robot_id: 7, current_hp: 600, shooter_heat: 400, team_color: false, is_attacked: false}"
+
+# 期望：
+# - watcher 显示 HOME_RECOVER
+
+
+8. 未开赛回家待机
+-----------------
+ros2 topic pub -r 1 /game_status rm_decision_interfaces/msg/GameStatus \
+  "{game_progress: 0, stage_remain_time: 220}"
+
+# 期望：
+# - watcher 显示 HOME_STANDBY
+
+
+9. 先看当前输入到底是什么
+-------------------------
+ros2 topic echo /game_status --once
+ros2 topic echo /robot_status --once
+
+# 重要：
+# - 只发 /game_status 不一定会去中心
+# - 当前树还依赖 /robot_status：
+#   current_hp >= 250
+#   shooter_heat <= 350
+# - 如果之前开过低血/高热的 `ros2 topic pub -r ... /robot_status ...`
+#   那个终端不 Ctrl+C，它会一直把树压在回家分支
+
+
+10. 快速观察
+------------
+ros2 action list | grep navigate_to_pose
+ros2 topic echo /robot_control
+ros2 topic echo /cmd_vel
+ros2 topic echo /cmd_vel_chassis
+ros2 topic echo /cmd_vel_chassis_bt
+
+
+11. 一次性冒烟测试
+-----------------
+# 只想测“整条链通不通”，用这个
+# 它测试完会自动退出，不适合手动反复调分支
+bash ~/sentry_planner/scripts/run_behavior_chain_autostart.sh
+
+
+12. 自动等待守中切换
+--------------------
+# 适合确认“是否真的到中心后切成攻击态”
+bash ~/sentry_planner/scripts/run_behavior_chain_test.sh \
+  --require-center --center-timeout 60
+
+
+13. 可选：开 Groot2
+------------------
+cd ~/Desktop
 ./Groot2-v1.9.0-x86_64.AppImage
-  
 
+
+KEY POINTS
+==========
+
+当前 `center_attack_simple` 关键点：
+- Home: `(0.8, 7.8)`
+- Center2026: `(6.33, 4.32)`
+- Center threshold: `0.35 m`
+- HP threshold: `250`
+- Heat threshold: `350`
+- Attack spin velocity: `0.5 rad/s`

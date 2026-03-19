@@ -18,6 +18,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
+find_package(serial_driver REQUIRED)
+find_package(rm_decision_interfaces REQUIRED)
 
 ###########
 ## Build ##
@@ -26,6 +28,11 @@ ament_auto_find_build_dependencies()
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/rm_serial_driver.cpp
   src/crc.cpp
+)
+
+ament_target_dependencies(${PROJECT_NAME}
+  rm_decision_interfaces
+  serial_driver
 )
 
 rclcpp_components_register_node(${PROJECT_NAME}

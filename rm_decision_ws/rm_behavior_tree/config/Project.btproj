@@ -2,6 +2,7 @@
 <root BTCPP_format="4" project_name="Project">
     <include path="attack_left.xml"/>
     <include path="attack_right.xml"/>
+    <include path="center_attack_simple.xml"/>
     <include path="protect_supply.xml"/>
     <include path="retreat_attack_left.xml"/>
     <include path="rmuc_01.xml"/>
@@ -25,6 +26,11 @@
             <input_port name="game_progress" default="4"/>
             <input_port name="lower_remain_time" default="0"/>
             <input_port name="higher_remain_time" default="300"/>
+        </Action>
+        <Action ID="IsNearGoal" editable="true">
+            <input_port name="current_location" default="{current_location}"/>
+            <input_port name="goal_pose" default="0;0;0; 0;0;0;1"/>
+            <input_port name="dist_threshold" default="0.3"/>
         </Action>
         <Action ID="IsOutpostOK" editable="true">
             <input_port name="robot_status" default="{robot_status}"/>
@@ -53,7 +59,7 @@
             <input_port name="action_name" default="navigate_to_pose"/>
         </Action>
         <Action ID="SubAllRobotHP" editable="true">
-            <input_port name="topic_name" default="robot_hp"/>
+            <input_port name="topic_name" default="/all_robot_hp"/>
             <output_port name="robot_hp" default="{robot_hp}"/>
         </Action>
         <Action ID="SubArmors" editable="true">

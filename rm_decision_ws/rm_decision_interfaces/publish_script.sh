@@ -15,7 +15,7 @@ ros2 topic pub -r 1 /game_status rm_decision_interfaces/msg/GameStatus "{
     stage_remain_time: 220,
 }" &
 
-ros2 topic pub -r 3 /robot_hp rm_decision_interfaces/msg/AllRobotHP "{
+ros2 topic pub -r 3 /all_robot_hp rm_decision_interfaces/msg/AllRobotHP "{
     red_1_robot_hp: 100,
     red_2_robot_hp: 100,
     red_3_robot_hp: 100,

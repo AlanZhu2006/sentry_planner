@@ -3,7 +3,7 @@
       main_tree_to_execute="BehaviorTree">
   <BehaviorTree ID="BehaviorTree">
     <ReactiveSequence>
-      <SubAllRobotHP topic_name="robot_hp"
+      <SubAllRobotHP topic_name="/all_robot_hp"
                      robot_hp="{robot_hp}"/>
       <SubArmors topic_name="/detector/armors"
                  armors="{armors}"/>
@@ -193,7 +193,7 @@
     <Action ID="SubAllRobotHP"
             editable="true">
       <input_port name="topic_name"
-                  default="robot_hp"/>
+                  default="/all_robot_hp"/>
       <output_port name="robot_hp"
                    default="{robot_hp}"/>
     </Action>

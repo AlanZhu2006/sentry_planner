@@ -1,5 +1,8 @@
 #include "rm_behavior_tree/rm_behavior_tree.h"
 
+#include <memory>
+#include <string>
+
 #include "behaviortree_cpp/bt_factory.h"
 #include "behaviortree_cpp/loggers/groot2_publisher.h"
 #include "behaviortree_cpp/utils/shared_library.h"
@@ -11,11 +14,17 @@ int main(int argc, char ** argv)
   BT::BehaviorTreeFactory factory;
 
   std::string bt_xml_path;
+  bool enable_groot = true;
+  int groot_port = 1667;
   auto node = std::make_shared<rclcpp::Node>("rm_behavior_tree");
   node->declare_parameter<std::string>(
     "style", "./rm_decision_ws/rm_behavior_tree/rm_behavior_tree.xml");
+  node->declare_parameter<bool>("enable_groot", true);
+  node->declare_parameter<int>("groot_port", 1667);
   node->get_parameter_or<std::string>(
     "style", bt_xml_path, "./rm_decision_ws/rm_behavior_tree/config/attack_left.xml");
+  node->get_parameter_or<bool>("enable_groot", enable_groot, true);
+  node->get_parameter_or<int>("groot_port", groot_port, 1667);
 
   std::cout << "Start RM_Behavior_Tree" << '\n';
   RCLCPP_INFO(node->get_logger(), "Load bt_xml: \e[1;42m %s \e[0m", bt_xml_path.c_str());
@@ -44,6 +53,7 @@ int main(int argc, char ** argv)
     "is_game_time",
     "is_status_ok",
     "is_detect_enemy",
+    "is_near_goal",
     "is_attacked",
     "is_friend_ok",
     "is_outpost_ok",
@@ -66,9 +76,20 @@ int main(int argc, char ** argv)
 
   auto tree = factory.createTreeFromFile(bt_xml_path);
 
-  // Connect the Groot2Publisher. This will allow Groot2 to get the tree and poll status updates.
-  const unsigned port = 1667;
-  BT::Groot2Publisher publisher(tree, port);
+  std::unique_ptr<BT::Groot2Publisher> publisher;
+  if (enable_groot) {
+    try {
+      publisher = std::make_unique<BT::Groot2Publisher>(tree, static_cast<unsigned>(groot_port));
+      RCLCPP_INFO(node->get_logger(), "Groot2Publisher enabled on port %d", groot_port);
+    } catch (const std::exception & e) {
+      RCLCPP_WARN(
+        node->get_logger(),
+        "Failed to start Groot2Publisher on port %d: %s. Continue without Groot.",
+        groot_port, e.what());
+    }
+  } else {
+    RCLCPP_INFO(node->get_logger(), "Groot2Publisher disabled");
+  }
 
   while (rclcpp::ok()) {
     tree.tickWhileRunning(std::chrono::milliseconds(10));

@@ -17,6 +17,7 @@ from launch.actions.append_environment_variable import AppendEnvironmentVariable
 class WorldType:
     RMUC = 'RMUC'
     RMUL = 'RMUL'
+    RMUL2026 = 'RMUL2026'
 
 def get_world_config(world_type):
     world_configs = {
@@ -34,6 +35,19 @@ def get_world_config(world_type):
             'yaw': '0.0',
             'world_path': 'RMUL2024_world/RMUL2024_world.world'
             # 'world_path': 'RMUL2024_world/RMUL2024_world_dynamic_obstacles.world'
+        },
+        WorldType.RMUL2026: {
+            # RMUL2026 now uses the lower-left field corner as map origin.
+            # Home is shifted to the upper-left inner free space (0.8, 7.8),
+            # and Center2026 remains near the field center at (6.33, 4.32).
+            # Spawn base_link at Home so Gazebo / AMCL / BT share one frame.
+            # With a 0.06 m wheel radius, spawning base_link slightly above
+            # 0.06 m avoids both ground penetration and visible floating.
+            'x': '0.8',
+            'y': '7.8',
+            'z': '0.08',
+            'yaw': '0.0',
+            'world_path': 'RMUL2026_world/RMUL2026_world.world'
         }
     }
     return world_configs.get(world_type, None)
@@ -67,7 +81,7 @@ def generate_launch_description():
     declare_world_cmd = DeclareLaunchArgument(
         'world',
         default_value=WorldType.RMUC,
-        description='Choose <RMUC> or <RMUL>'
+        description='Choose <RMUC>, <RMUL>, or <RMUL2026>'
     )
 
     declare_rviz_config_file_cmd = DeclareLaunchArgument(
@@ -160,6 +174,7 @@ def generate_launch_description():
 
     bringup_RMUC_cmd_group = create_gazebo_launch_group(WorldType.RMUC)
     bringup_RMUL_cmd_group = create_gazebo_launch_group(WorldType.RMUL)
+    bringup_RMUL2026_cmd_group = create_gazebo_launch_group(WorldType.RMUL2026)
 
     # Create the launch description and populate
     ld = LaunchDescription()
@@ -175,6 +190,7 @@ def generate_launch_description():
     ld.add_action(gazebo_client_launch)
     ld.add_action(start_joint_state_publisher_cmd)
     ld.add_action(start_robot_state_publisher_cmd)
+    ld.add_action(bringup_RMUL2026_cmd_group) # type: ignore
     ld.add_action(bringup_RMUL_cmd_group) # type: ignore
     ld.add_action(bringup_RMUC_cmd_group) # type: ignore
 

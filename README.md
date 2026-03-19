@@ -25,6 +25,14 @@
 
 ---
 
+详细的通讯链路、桥接方式、协议字段和启动顺序说明见 [README_COMMUNICATION.md](README_COMMUNICATION.md)。
+
+当前默认行为树 `retreat_attack_left.xml` 的流程图、输入依赖和实际分支说明见 [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md)。
+
+实机上车前的准备、分阶段联调建议、安全注意事项和当前实机入口说明见 [README_REAL_DEBUGGING.md](README_REAL_DEBUGGING.md)。
+
+---
+
 ## 〇、NYUSH 适配与变更记录 / Change Log
 
 > 本节记录 NYUSH Robotics 对原始 SMBU 框架所做的全部修改及当前架构。
@@ -108,7 +116,9 @@
 │  │                        Navigation2 (Nav2)                            │   │
 │  │  输入: /goal_pose, /Odometry, /scan                                  │   │
 │  │  处理: 全局路径规划 → 局部路径规划 → 动态避障                           │   │
-│  │  输出: /cmd_vel ──► serial_sender / rm_serial_driver ──► C板执行       │   │
+│  │  输出: /cmd_vel ──► fake_vel_transform ──► /cmd_vel_chassis            │   │
+│  │                  ──► bt_comm_adapter ──► /cmd_vel_chassis_bt           │   │
+│  │                  ──► serial_sender ──► bridge ──► C板执行              │   │
 │  └──────────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -125,7 +135,10 @@ LiDAR → livox_ros_driver2 → Fast-LIO → /cloud_registered, /Odometry
                                            │         │
          /goal_pose (来自决策树) ────────────┘         │
                                                       ▼
-         serial_sender.py / rm_serial_driver ──► USB ──► C板 radar_comm
+         fake_vel_transform ─► /cmd_vel_chassis ─► bt_comm_adapter
+                                                     │
+                                                     ├─► /cmd_vel_chassis_bt ─► serial_sender.py ─► bridge ─► C板 radar_comm
+                                                     └─► /detector/armors /game_status /robot_status /all_robot_hp (兼容/保底)
                                                       │
                                                       ▼
          STM32 radar_comm ──► robot_cmd ──► chassis_cmd ──► sentry_controller
@@ -252,7 +265,7 @@ ros2 launch rm_behavior_tree rm_behavior_tree.launch.py style:=retreat_attack_le
 
 | 节点 | 订阅话题 | 黑板输出 | 消息类型 |
 |------|----------|----------|----------|
-| **SubAllRobotHP** | `robot_hp` | `{robot_hp}` | `AllRobotHP` (裁判系统) |
+| **SubAllRobotHP** | `/all_robot_hp` | `{robot_hp}` | `AllRobotHP` (裁判系统) |
 | **SubRobotStatus** | `robot_status` | `{robot_status}` | `RobotStatus` (本机血量/热量/被攻击) |
 | **SubGameStatus** | `game_status` | `{game_status}` | `GameStatus` (比赛阶段、剩余时间) |
 | **SubArmors** | `/detector/armors` | `{armors}` | `Armors` (装甲板检测) |
@@ -314,6 +327,8 @@ ros2 launch rm_behavior_tree rm_behavior_tree.launch.py style:=retreat_attack_le
 **goal_pose 格式**：`x;y;z; qx;qy;qz;qw`，由 `bt_conversions.hpp` 解析为 `PoseStamped`。
 
 ### 3.4 决策逻辑详解 (retreat_attack_left.xml)
+
+更适合调试时直接查看的版本见 [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md)。
 
 完整逻辑树结构：
 
@@ -383,8 +398,9 @@ robot_control  (params_robot_control, 默认 robot_control)
 
 - **SendGoal** 调用 Nav2 的 `navigate_to_pose` Action。
 - 目标点来自 XML 中的 `goal_pose`（如 `5.1;1.9;0; 0;0;0;1`）。
-- Nav2 输出 `/cmd_vel` → `fake_vel_transform` 转换 → `/cmd_vel_chassis` → 底盘。
-- 行为树只发导航目标，不直接控制底盘速度。
+- Nav2 输出 `/cmd_vel` → `fake_vel_transform` 转换 → `/cmd_vel_chassis`。
+- `bt_comm_adapter.py` 将 `/cmd_vel_chassis` 与 `/robot_control.chassis_spin_vel` 合成为 `/cmd_vel_chassis_bt`。
+- 当前 bridge 链建议由 `serial_sender.py` 订阅 `/cmd_vel_chassis_bt` 并写入 `Radar PTY`。
 
 ### 3.7 可用配置文件
 
@@ -659,7 +675,7 @@ unset MAP_YAML    # 避免环境变量覆盖为 11_map
 **4. 适配自定义配置**
 - [ ] 决策树中的目标点改为 RMUL 地图坐标
 - [ ] 实机时确认 `/cmd_vel` → 串口转发正确
-- [ ] 若用裁判系统，确认 `robot_hp` / `robot_status` / `game_status` 话题正确
+- [ ] 若用裁判系统，确认 `/all_robot_hp` / `robot_status` / `game_status` 话题正确
 
 #### 推荐顺序
 
@@ -720,8 +736,8 @@ ls ~/sentry_planner/rm_decision_ws/src/rm_behavior_tree/config/
 | **Failed to change state for node: map_server** | map_server 生命周期激活失败 | ① `cd /tmp` 导致环境异常：尝试去掉 `cd /tmp` 在同一 shell 启动<br>② 地图路径错误：确认 RMUL.yaml 存在<br>③ nav2_bringup 与 my_nav2_params 不兼容 |
 | **Action server 'navigate_to_pose' is not reachable** | Nav2 未完全启动 | map_server 失败导致整链失败；先修 map_server，再增加 sleep 或等待 action 就绪 |
 | **Can't convert string [ 0] to double** | `goal_pose` 格式含前导空格 | 已修复：`bt_conversions.hpp` 使用 `parseDouble` trim；`send_goal.cpp` 需 `#include "rm_behavior_tree/bt_conversions.hpp"`。修改后需 `colcon build --packages-select rm_behavior_tree` |
-| **Missing required input [message]** | `robot_status` / `robot_hp` 为空 | 无雷达测试无 C 板，不发布这些话题；需在 fake_sensors 中增加假 `robot_hp`、`robot_status` 发布 |
-| **SubAllRobotHP topic_name** | XML 为 `robot_hp`，C 板为 `/all_robot_hp` | 确认 topic 名一致，必要时改 XML 或加 remap |
+| **Missing required input [message]** | `robot_status` / `/all_robot_hp` 为空 | 当前可先启用 `bt_comm_adapter.py` 的 fallback 话题，或接入真裁判系统数据 |
+| **SubAllRobotHP topic_name** | 行为树应订阅 `/all_robot_hp` | 当前已统一为 `/all_robot_hp` |
 
 **run_test_a 启动顺序：** 假传感器(1) → Nav2(2) → 决策树(3) → game_status(4)。Nav2 需约 8s 才能就绪，决策树过早启动会报 `navigate_to_pose` 不可达。
 

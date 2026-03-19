@@ -13,7 +13,7 @@ def generate_launch_description():
         executable='fake_vel_transform_node',
         output='screen',
         parameters=[
-            {'use_sim_time': use_sim_time }
+            {'use_sim_time': use_sim_time, 'use_nav_wz': False}
         ]
     )
 

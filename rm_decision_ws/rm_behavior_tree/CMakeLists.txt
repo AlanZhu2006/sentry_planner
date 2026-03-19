@@ -75,6 +75,11 @@ ament_auto_add_library(is_detect_enemy SHARED
 )
 add_target_dependencies(is_detect_enemy)
 
+ament_auto_add_library(is_near_goal SHARED
+    plugins/condition/is_near_goal.cpp
+)
+add_target_dependencies(is_near_goal)
+
 # Actions
 ament_auto_add_library(send_goal SHARED 
     plugins/action/send_goal.cpp

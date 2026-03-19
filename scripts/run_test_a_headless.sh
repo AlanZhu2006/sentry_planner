@@ -1,6 +1,6 @@
 #!/bin/bash
 # 方案 A：无雷达测试 - 无界面版（无 RViz，适用于 headless/CI）
-# 会开 3 个后台进程：假传感器、Nav2、决策、game_status
+# 会开 5 个后台进程：假传感器、Nav2、通讯适配层、决策、game_status
 # 若 ~/.ros 无写权限，自动使用 /tmp 作为日志目录
 
 set -e
@@ -10,12 +10,14 @@ SENTRY_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 MAP_YAML="$SENTRY_ROOT/rm_navigation_ws/src/rm_nav_bringup/map/RMUL.yaml"
 NAV_PARAMS="${NAV_PARAMS:-/home/nyu/nav_ws/my_nav2_params.yaml}"
 ROS_LOG_DIR="${ROS_LOG_DIR:-}"
+BT_STYLE="${BT_STYLE:-center_attack_simple}"
 
 trap 'echo ">>> 停止所有..."; kill $(jobs -p) 2>/dev/null; exit' SIGINT
 
 echo "=========================================="
 echo "  方案 A：无雷达测试 (headless)"
 echo "  地图: $MAP_YAML"
+echo "  行为树: $BT_STYLE"
 echo "=========================================="
 
 # 若 ~/.ros/log 无写权限，使用 /tmp
@@ -48,16 +50,24 @@ echo ">>> [2/4] 启动 Nav2..."
    use_sim_time:=False map:="$MAP_YAML" params_file:="$NAV_PARAMS") &
 sleep 8
 
-echo ">>> [3/4] 启动决策行为树..."
+echo ">>> [3/5] 启动行为树通讯适配层..."
+(cd /tmp && unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH && \
+ source /opt/ros/humble/setup.bash && \
+ source "$SENTRY_ROOT/rm_vision_ws/install/setup.bash" 2>/dev/null; \
+ source "$SENTRY_ROOT/rm_decision_ws/install/setup.bash" && \
+ python3 "$SENTRY_ROOT/scripts/bt_comm_adapter.py") &
+sleep 2
+
+echo ">>> [4/5] 启动决策行为树..."
 (cd /tmp && unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH && \
  source /opt/ros/humble/setup.bash && \
  source "$SENTRY_ROOT/rm_vision_ws/install/setup.bash" 2>/dev/null; \
  source "$SENTRY_ROOT/rm_decision_ws/install/setup.bash" && \
  ros2 launch rm_behavior_tree rm_behavior_tree.launch.py \
-   style:=retreat_attack_left use_sim_time:=False) &
+   style:="$BT_STYLE" use_sim_time:=False) &
 sleep 3
 
-echo ">>> [4/4] 发布 game_status..."
+echo ">>> [5/5] 发布 game_status..."
 (cd /tmp && unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH && \
  source /opt/ros/humble/setup.bash && \
  source "$SENTRY_ROOT/rm_decision_ws/install/setup.bash" 2>/dev/null; \
@@ -67,6 +77,7 @@ sleep 1
 
 echo ""
 echo "✅ 全部启动完成 (无 RViz)"
+echo "   默认只用 vx/vy，忽略 Nav2 自带 wz"
 echo "   可用 ros2 topic list / ros2 node list 检查"
 echo "   按 Ctrl+C 停止所有节点"
 echo ""

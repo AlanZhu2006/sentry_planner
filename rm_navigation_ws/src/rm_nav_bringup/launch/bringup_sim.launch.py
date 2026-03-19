@@ -4,7 +4,7 @@ import yaml
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, GroupAction, TimerAction, ExecuteProcess
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, GroupAction, TimerAction, ExecuteProcess, LogInfo
 from launch_ros.actions import Node
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Command
@@ -25,9 +25,11 @@ def generate_launch_description():
     ################################ robot_description parameters start ###############################
     launch_params = yaml.safe_load(open(os.path.join(
     get_package_share_directory('rm_nav_bringup'), 'config', 'simulation', 'measurement_params_sim.yaml')))
+    use_gazebo_odom = LaunchConfiguration('use_gazebo_odom', default='false')
     robot_description = Command(['xacro ', os.path.join(
     get_package_share_directory('rm_nav_bringup'), 'urdf', 'sentry_robot_sim.xacro'),
-    ' xyz:=', launch_params['base_link2livox_frame']['xyz'], ' rpy:=', launch_params['base_link2livox_frame']['rpy']])
+    ' xyz:=', launch_params['base_link2livox_frame']['xyz'], ' rpy:=', launch_params['base_link2livox_frame']['rpy'],
+    ' use_gazebo_odom:=', use_gazebo_odom])
     ################################# robot_description parameters end ################################
 
     ########################## linefit_ground_segementation parameters start ##########################
@@ -51,8 +53,10 @@ def generate_launch_description():
     ################################### slam_toolbox parameters end ###################################
 
     ################################### navigation2 parameters start ##################################
-    # 仿真专用地图：固定使用 RMUL（非 11_map/Desktop 等实机地图）
-    nav2_map_path = os.path.join(rm_nav_bringup_dir, 'map', 'RMUL.yaml')
+    # Use the map that matches the selected world name, e.g.:
+    #   world:=RMUL     -> map/RMUL.yaml
+    #   world:=RMUL2026 -> map/RMUL2026.yaml
+    nav2_map_path = PathJoinSubstitution([rm_nav_bringup_dir, 'map', world]), ".yaml"
     nav2_params_file_dir = os.path.join(rm_nav_bringup_dir, 'config', 'simulation', 'nav2_params_sim.yaml')
     ################################### navigation2 parameters end ####################################
 
@@ -101,6 +105,11 @@ def generate_launch_description():
         'lio',
         default_value='fast_lio',
         description='Choose lio alogrithm: fastlio or pointlio')
+
+    declare_use_gazebo_odom_cmd = DeclareLaunchArgument(
+        'use_gazebo_odom',
+        default_value='false',
+        description='Use Gazebo odom for AMCL (stable in sim). Set true when lio:=none to avoid TF conflict.')
 
     # Specify the actions
     declare_headless_cmd = DeclareLaunchArgument(
@@ -152,7 +161,20 @@ def generate_launch_description():
         emulate_tty=True,
     )
 
-    bringup_LIO_group = GroupAction([
+    # Gazebo planar_move 插件可能不发布 TF，用 odom_to_tf 节点从 /Odometry 话题生成 TF
+    # 仿真中始终运行（因为 Gazebo 总会发布 /Odometry）
+    odom_to_tf_script = os.path.join(
+        get_package_share_directory('rm_nav_bringup'), 'scripts', 'odom_to_tf.py')
+    bringup_odom_to_tf_node = ExecuteProcess(
+        cmd=['python3', odom_to_tf_script, '--ros-args', '-p', 'use_sim_time:=true', '-p', 'odom_topic:=/Odometry'],
+        output='screen',
+        emulate_tty=True,
+    )
+
+    # 使用 Gazebo 里程计时不启动 Fast-LIO，避免 odom->base_link 双源冲突
+    bringup_LIO_group = GroupAction(
+        condition=LaunchConfigurationEquals('use_gazebo_odom', 'false'),
+        actions=[
         Node(
             package="tf2_ros",
             executable="static_transform_publisher",
@@ -233,15 +255,6 @@ def generate_launch_description():
     start_localization_group = GroupAction(
         condition = LaunchConfigurationEquals('mode', 'nav'),
         actions=[
-            # 保底：立即发布 map->odom，确保 map 坐标系存在，避免 RViz/Nav2 报 "frame does not exist"
-            # AMCL 启动后也会发布 map->odom（可能产生 multiple authority 警告，但 map 能正常显示）
-            Node(
-                package='tf2_ros',
-                executable='static_transform_publisher',
-                name='map_to_odom_publisher',
-                arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom'],
-                parameters=[{'use_sim_time': use_sim_time}],
-            ),
             Node(
                 condition = LaunchConfigurationEquals('localization', 'slam_toolbox'),
                 package='slam_toolbox',
@@ -298,7 +311,8 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'use_sim_time': use_sim_time,
-            'spin_speed': 5.0 # rad/s
+            'spin_speed': 5.0, # rad/s
+            'use_nav_wz': False
         }]
     )
 
@@ -333,12 +347,18 @@ def generate_launch_description():
     ld.add_action(declare_mode_cmd)
     ld.add_action(declare_localization_cmd)
     ld.add_action(declare_LIO_cmd)
+    ld.add_action(declare_use_gazebo_odom_cmd)
+    ld.add_action(LogInfo(
+        condition=LaunchConfigurationEquals('world', 'RMUL2026'),
+        msg='[bringup_sim] RMUL2026 Gazebo world is enabled. Nav2 map defaults to map/RMUL2026.yaml.'
+    ))
 
     ld.add_action(start_rm_simulation)
     ld.add_action(bringup_imu_complementary_filter_node)
     ld.add_action(bringup_linefit_ground_segmentation_node)
     ld.add_action(bringup_pointcloud_to_laserscan_node)
     ld.add_action(bringup_LIO_group)
+    ld.add_action(bringup_odom_to_tf_node)
     ld.add_action(start_localization_group)
     ld.add_action(bringup_fake_vel_transform_node)
     ld.add_action(start_mapping)

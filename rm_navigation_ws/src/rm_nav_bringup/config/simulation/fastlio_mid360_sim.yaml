@@ -1,8 +1,8 @@
 /**:
     ros__parameters:
         feature_extract_enable: false
-        point_filter_num: 5   # 3->5 更多下采样，减轻计算量
-        max_iteration: 1      # 2->1 进一步减轻计算
+        point_filter_num: 3   # 5→3 减少下采样，提高位姿稳定性（定位乱飞时）
+        max_iteration: 2      # 1→2 增加迭代，提高位姿质量
         filter_size_surf: 0.6 # 0.5->0.6 滤波更粗
         filter_size_map: 0.6
         cube_side_length: 1000.0

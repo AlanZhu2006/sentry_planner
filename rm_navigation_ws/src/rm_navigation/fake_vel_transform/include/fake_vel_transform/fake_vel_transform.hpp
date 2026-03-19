@@ -49,6 +49,7 @@ private:
   double current_angle_;
   double base_link_angle_;
   float spin_speed_;
+  bool use_nav_wz_;
 };
 
 }  // namespace fake_vel_transform
