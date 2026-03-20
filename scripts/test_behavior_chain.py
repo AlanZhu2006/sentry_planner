@@ -42,7 +42,12 @@ def format_robot_control(msg: Optional[RobotControl]) -> str:
     return (
         "RobotControl("
         f"stop_gimbal_scan={bool_text(bool(msg.stop_gimbal_scan))}, "
-        f"chassis_spin_vel={float(msg.chassis_spin_vel):.3f})"
+        f"chassis_spin_vel={float(msg.chassis_spin_vel):.3f}, "
+        f"scan_enabled={bool_text(bool(getattr(msg, "scan_enabled", False)))}, "
+        f"allow_vision_control={bool_text(bool(getattr(msg, "allow_vision_control", False)))}, "
+        f"search_when_target_lost={bool_text(bool(getattr(msg, "search_when_target_lost", False)))}, "
+        f"scan_yaw_rate_deg_s={float(getattr(msg, "scan_yaw_rate_deg_s", 0.0)):.1f}, "
+        f"search_pitch_deg={float(getattr(msg, "search_pitch_deg", 0.0)):.1f})"
     )
 
 
@@ -172,11 +177,20 @@ class BehaviorChainTester(Node):
 
     def is_scan_mode(self) -> bool:
         msg = self.current_robot_control()
-        return msg is not None and (not msg.stop_gimbal_scan) and approx_zero(msg.chassis_spin_vel)
+        if msg is None:
+            return False
+        return bool(getattr(msg, "scan_enabled", False)) and (not bool(getattr(msg, "allow_vision_control", False)))
 
     def is_attack_mode(self) -> bool:
         msg = self.current_robot_control()
-        return msg is not None and bool(msg.stop_gimbal_scan) and float(msg.chassis_spin_vel) > 0.1
+        if msg is None:
+            return False
+        return (
+            bool(getattr(msg, "scan_enabled", False)) and
+            bool(getattr(msg, "allow_vision_control", False)) and
+            bool(getattr(msg, "search_when_target_lost", False)) and
+            float(msg.chassis_spin_vel) > 0.1
+        )
 
     def saw_motion_topic(self) -> bool:
         twists = [

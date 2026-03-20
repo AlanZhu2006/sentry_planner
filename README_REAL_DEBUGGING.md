@@ -115,8 +115,10 @@ planner/nav <-> Radar  PTY <-> sentry_bridge.py <-> /dev/ttyACM0 <-> nyush-rm-co
 
 当前要特别注意：
 
-- `start_robot.sh` 仍然默认启动旧树 `retreat_attack_left`
-- 它不是你现在这条 `center_attack_simple` 主线的最佳入口
+- `start_robot.sh` 现在默认已经切到 `center_attack_simple`
+- 它会自动启动 `bt_comm_adapter.py`
+- 它仍然不会自动启动 `sentry_bridge.py`
+- 如需一键把 `/cmd_vel_chassis_bt` 写进 Radar PTY，可以用 `START_SERIAL_SENDER=1 RADAR_PTY=/tmp/nyush-rm-sentry-radar ./start_robot.sh`
 
 如果你现在调的是：
 
@@ -124,23 +126,24 @@ planner/nav <-> Radar  PTY <-> sentry_bridge.py <-> /dev/ttyACM0 <-> nyush-rm-co
 - 到点守中
 - 低血回家
 
-那建议按本文的“手动分终端启动”走，不要直接把 `start_robot.sh` 当唯一入口。
+那 `start_robot.sh` 已经可以作为主入口了；只是 bridge 和视觉程序仍建议分终端单独起。
 
 ### 3.6 明确当前已打通和未打通的量
 
-当前实机链路里，和行为树最相关的两个输出是：
+当前实机链路里，和行为树最相关的输出已经分成两组：
 
-- `chassis_spin_vel`
-  - 已经能通过 `bt_comm_adapter.py` 合成进 `/cmd_vel_chassis_bt`
-  - 并继续经 `serial_sender -> Radar PTY -> bridge -> MCU`
-- `stop_gimbal_scan`
-  - 当前仍主要停留在 ROS 侧 `/robot_control`
-  - 还不是完整直通到 bridge/MCU 的独立控制量
+- `/cmd_vel_chassis_bt`
+  - 由 `Nav2 /cmd_vel_chassis` 和 `RobotControl.chassis_spin_vel` 经 `bt_comm_adapter.py` 合成
+  - 然后继续经 `serial_sender -> Radar PTY -> bridge -> SX -> MCU`
+- `/robot_control` 功能话题
+  - 关键字段包括 `scan_enabled`、`allow_vision_control`、`search_when_target_lost`、`scan_yaw_rate_deg_s`、`search_pitch_deg`
+  - 现在已经能通过 `/robot_control -> serial_sender(A3) -> Radar PTY -> bridge -> SX.control_flags/config -> MCU` 落到下位机
+  - 旧字段 `stop_gimbal_scan` 仍保留兼容，但已经不是唯一控制量
 
 这点非常重要：
 
 - 你现在能比较稳地测“去中心 / 回家 / 小陀螺速度”
-- 但不要默认“停扫/切自瞄”已经全链路落到下位机
+- `/robot_control` 也已经能真实切到下位机云台状态机；到中心后可以停扫、放开自瞄接管，并在丢目标时回到搜索扫描
 
 ## 4. 是不是必须先有实际场地
 
@@ -353,27 +356,28 @@ ros2 topic pub -r 1 /game_status rm_decision_interfaces/msg/GameStatus \
 
 ## 9. 当前已知坑
 
-### 9.1 `start_robot.sh` 不是当前主线入口
+### 9.1 `start_robot.sh` 已切到当前主线入口
 
-它仍然默认：
+它现在默认：
 
-- 旧树 `retreat_attack_left`
-- 旧实机流程
+- 新树 `center_attack_simple`
+- 当前 bridge/BT 主线流程
 
-所以当前建议以手动分终端启动为准。
+所以现在可以把它当成 planner 侧主入口来用；只是 bridge 和视觉程序仍建议分终端启动。
 
-### 9.2 `stop_gimbal_scan` 还不是完整下位机闭环
+### 9.2 `/robot_control` 已经接成完整下位机闭环
 
-当前真正稳地落到底盘链上的，是：
+当前这条链路已经是：
 
 - `Nav2 /cmd_vel_chassis`
 - `RobotControl.chassis_spin_vel`
+- `RobotControl.scan_enabled`
+- `RobotControl.allow_vision_control`
+- `RobotControl.search_when_target_lost`
+- `RobotControl.scan_yaw_rate_deg_s`
+- `RobotControl.search_pitch_deg`
 
-而：
-
-- `RobotControl.stop_gimbal_scan`
-
-目前仍主要停留在 ROS 侧。
+其中这些功能字段会经 `serial_sender(A3) -> sentry_bridge.py -> SX.control_flags/config -> nyush-rm-control` 落到哨兵云台状态机；`stop_gimbal_scan` 现在只作为旧树兼容字段保留。
 
 ### 9.3 PTY 会变
 

@@ -19,7 +19,15 @@ public:
 
   static BT::PortsList providedPorts()
   {
-    return {BT::InputPort<bool>("stop_gimbal_scan"), BT::InputPort<float>("chassis_spin_vel")};
+    return {
+      BT::InputPort<bool>("stop_gimbal_scan"),
+      BT::InputPort<float>("chassis_spin_vel"),
+      BT::InputPort<bool>("scan_enabled"),
+      BT::InputPort<bool>("allow_vision_control"),
+      BT::InputPort<bool>("search_when_target_lost"),
+      BT::InputPort<float>("scan_yaw_rate_deg_s"),
+      BT::InputPort<float>("search_pitch_deg")
+    };
   }
 };
 }  // namespace rm_behavior_tree

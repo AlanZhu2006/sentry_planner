@@ -25,6 +25,11 @@ class StateSnapshot:
     shooter_heat: Optional[int] = None
     stop_gimbal_scan: Optional[bool] = None
     chassis_spin_vel: Optional[float] = None
+    scan_enabled: Optional[bool] = None
+    allow_vision_control: Optional[bool] = None
+    search_when_target_lost: Optional[bool] = None
+    scan_yaw_rate_deg_s: Optional[float] = None
+    search_pitch_deg: Optional[float] = None
     vx: Optional[float] = None
     vy: Optional[float] = None
     wz: Optional[float] = None
@@ -77,6 +82,11 @@ class CenterAttackWatcher(Node):
     def on_robot_control(self, msg: RobotControl) -> None:
         self.state.stop_gimbal_scan = bool(msg.stop_gimbal_scan)
         self.state.chassis_spin_vel = float(msg.chassis_spin_vel)
+        self.state.scan_enabled = bool(getattr(msg, "scan_enabled", False))
+        self.state.allow_vision_control = bool(getattr(msg, "allow_vision_control", False))
+        self.state.search_when_target_lost = bool(getattr(msg, "search_when_target_lost", False))
+        self.state.scan_yaw_rate_deg_s = float(getattr(msg, "scan_yaw_rate_deg_s", 0.0))
+        self.state.search_pitch_deg = float(getattr(msg, "search_pitch_deg", 0.0))
 
     def on_cmd_vel_chassis_bt(self, msg: Twist) -> None:
         self.state.vx = float(msg.linear.x)
@@ -118,7 +128,12 @@ class CenterAttackWatcher(Node):
             f"hp={fmt_int(self.state.current_hp)} "
             f"heat={fmt_int(self.state.shooter_heat)} "
             f"stop_scan={fmt_bool(self.state.stop_gimbal_scan)} "
+            f"scan={fmt_bool(self.state.scan_enabled)} "
+            f"vision={fmt_bool(self.state.allow_vision_control)} "
+            f"lost_search={fmt_bool(self.state.search_when_target_lost)} "
             f"spin={fmt_float(self.state.chassis_spin_vel)} "
+            f"scan_rate={fmt_float(self.state.scan_yaw_rate_deg_s)} "
+            f"search_pitch={fmt_float(self.state.search_pitch_deg)} "
             f"cmd=({fmt_float(self.state.vx)}, {fmt_float(self.state.vy)}, {fmt_float(self.state.wz)})",
             flush=True,
         )

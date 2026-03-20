@@ -1,6 +1,6 @@
 # NYUSH 哨兵通讯链路与协议说明
 
-最后更新：2026-03-19
+最后更新：2026-03-20
 
 本文专门整理 NYUSH 哨兵当前的通讯链路、协议格式、桥接方式、启动顺序和排障方法。
 
@@ -126,6 +126,28 @@ Nav2 -> /cmd_vel -> fake_vel_transform -> /cmd_vel_chassis -> 雷达侧发送器
    - 看视觉 ROS2 发布端到底发了什么 topic
 
 ## 5. 真实口与虚拟口的所有权
+
+### 5.0 命令在哪个仓库执行
+
+这套哨兵链路会同时用到 `nyush-rm-control` 和 `nyush-rm-vision` 两个仓库，它们的 `justfile` 不是同一个，所以命令不能混着跑。
+
+- 在 `nyush-rm-control` 里执行：
+  - `just bridge` / `just sentry-bridge`
+  - `just logger`
+  - `just logger-cli`
+  - `just vision`
+- 在 `nyush-rm-vision` 里执行：
+  - `just test detect --web --send`
+  - 其他 `just test ...`
+
+如果仓库跑错了，看到下面这种报错是正常现象：
+
+```text
+error: Justfile does not contain recipe `logger`
+error: Justfile does not contain recipe `test`
+```
+
+不要先怀疑命令本身，先确认当前目录是不是对的。
 
 ### 5.1 唯一原则
 
@@ -258,7 +280,7 @@ crc16        uint16
 
 这是桥接雷达侧和哨兵底盘控制的关键。
 
-### 8.1 雷达侧/桥 -> MCU：`SX`，24 字节
+### 8.1 雷达侧/桥 -> MCU：`SX`，33 字节
 
 定义来源：
 
@@ -270,13 +292,24 @@ crc16        uint16
 
 ```text
 head[2] = 'S','X'
-vx                 float
-vy                 float
-wz                 float
-gimbal_yaw_delta   float
-gimbal_pitch_delta float
-crc16              uint16
+vx                  float
+vy                  float
+wz                  float
+gimbal_yaw_delta    float
+gimbal_pitch_delta  float
+control_flags       uint8
+scan_yaw_rate_deg_s float
+search_pitch_deg    float
+crc16               uint16
 ```
+
+其中 `control_flags` 当前使用：
+
+- bit0: `scan_control_valid`
+- bit1: `stop_gimbal_scan`（旧兼容位）
+- bit2: `scan_enabled`
+- bit3: `allow_vision_control`
+- bit4: `search_when_target_lost`
 
 MCU 收到后会落到：
 
@@ -285,41 +318,48 @@ MCU 收到后会落到：
 - `sentry_ext.wz`
 - `sentry_ext.gimbal_yaw_delta`
 - `sentry_ext.gimbal_pitch_delta`
+- `sentry_ext.control_flags`
+- `sentry_ext.scan_yaw_rate_deg_s`
+- `sentry_ext.search_pitch_deg`
 
 随后在 `robot_cmd.c` 中被应用到：
 
 - `chassis_cmd_send.vx`
 - `chassis_cmd_send.vy`
 - `chassis_cmd_send.wz`
-- 必要时叠加少量云台增量
+- 云台扫描 / 自瞄接管 / 丢目标回扫状态机
 
-### 8.2 MCU -> 雷达侧/桥：`ST`，16 字节
+### 8.2 MCU -> 雷达侧/桥：`ST`，18 字节
 
 帧结构：
 
 ```text
-head[2] = 'S','T'
-cmd_vx  float
-cmd_vy  float
-cmd_wz  float
-crc16   uint16
+head[2]      = 'S','T'
+cmd_vx       float
+cmd_vy       float
+cmd_wz       float
+robot_status uint8
+game_status  uint8
+crc16        uint16
 ```
 
-它表示 MCU 当前实际采用的底盘命令，桥接脚本会把它转换成雷达侧可读的旧遥测帧。
+它表示 MCU 当前实际采用的底盘命令；其中 `robot_status` 由裁判系统电源管理输出位压成 bitfield，`game_status` 对应 `GameState.game_progress`。桥接脚本目前会消费这两个状态字节，但回雷达侧的旧遥测帧仍只保留 `vx/vy/wz`。
 
 ### 8.3 当前桥接脚本对 `SX` 的实际用法
 
-桥接脚本目前是这样构造 `SX` 的：
+桥接脚本现在是这样构造 `SX` 的：
 
-- `vx/vy/wz` 来自雷达侧输入
+- `vx/vy/wz` 来自雷达侧速度输入
 - `gimbal_yaw_delta = 0.0`
 - `gimbal_pitch_delta = 0.0`
+- `control_flags / scan_yaw_rate_deg_s / search_pitch_deg` 来自 `A3 RobotControl` 功能帧
 
-也就是说，桥现在主要解决的是：
+也就是说，桥现在同时解决的是：
 
 - 底盘速度透传
+- 云台扫描 / 自瞄接管功能量透传
 
-而不是：
+当前仍然没有做的是：
 
 - 雷达侧云台微调透传
 
@@ -357,9 +397,12 @@ crc16   uint16
 
 ## 10. `serial_sender.py` 与桥接雷达协议的对齐状态
 
-现在 `nyush-rm-vision/serial_sender.py` 已经按桥接脚本要求发送 19 字节雷达帧。
+现在 `nyush-rm-vision/serial_sender.py` 会同时发送两类桥接帧：
 
-### 10.1 当前 `serial_sender.py` 发送的是 19 字节
+- 19 字节雷达速度帧
+- 16 字节 `A3 RobotControl` 功能帧
+
+### 10.1 当前 `serial_sender.py` 的速度帧仍是 19 字节
 
 桥接脚本的 `RADAR_FRAME_SIZE` 现在是 19，并按：
 
@@ -390,10 +433,12 @@ crc16   uint16
   - 雷达/导航发送器走 `Radar PTY`
   - 真实硬件口仍然只由 `sentry_bridge.py` 占用
 
-当前还没有变化的一点是：
+当前已经变化的一点是：
 
-- 桥接脚本收到雷达帧后，仍只把 `vx/vy/wz` 写入 `SX`
-- 云台 pitch 相关控制如果以后要走这条链，还需要单独扩展桥接协议
+- 桥接脚本除了把 `vx/vy/wz` 写入 `SX`，还会把 `A3 RobotControl` 里的 `scan_enabled / allow_vision_control / search_when_target_lost / scan_yaw_rate_deg_s / search_pitch_deg` 一起写入 `SX`
+- `serial_sender.py --ros2` 也会同时订阅 `/cmd_vel_chassis_bt` 和 `/robot_control`
+- `stop_gimbal_scan` 仍然兼容，但已经降级成旧树兼容位
+- 云台增量微调 `yaw_delta/pitch_delta` 这条雷达侧直通链仍未启用
 
 ## 11. ROS2 话题链路
 
@@ -486,6 +531,23 @@ Radar PTY  : /dev/pts/4
 
 记下两个 PTY。
 
+#### 下位机 dashboard
+
+如果你想同时看 C 板 dashboard，而不是只看桥接日志，可以在 `nyush-rm-control` 再开一个终端：
+
+```bash
+cd /home/nyu/Codespace/nyush-rm-control
+just logger
+```
+
+然后访问：
+
+```text
+http://127.0.0.1:8080
+```
+
+注意这页是下位机 RTT dashboard，不是视觉检测网页。
+
 ### 12.2 视觉协议自检
 
 终端 2：直接用交互工具连 `Vision PTY`
@@ -531,110 +593,195 @@ pulse vx vy wz sec
 - 验证 MCU 是否回 `ST`
 - 验证底盘命令是否被真正应用
 
-### 12.4 视觉主程序接桥启动
+### 12.4 视觉主线接桥启动
 
-方式 A：直接改 `configs/sentry.yaml`
+先确保视觉程序连到桥接脚本给出的 `Vision PTY`。
 
-把：
+推荐优先使用桥创建的稳定软链接；如果你现场看到的是动态 `PTY`，就把对应路径写进 vision 配置。
 
-```yaml
-com_port: "/dev/pts/0"
-```
-
-改成桥启动后打印出来的 `Vision PTY`。
-
-方式 B：用稳定软链接，避免每次改 yaml
-
-```bash
-ln -sf /dev/pts/3 /tmp/nyush_vision_port
-```
-
-然后把 `configs/sentry.yaml` 中的：
-
-```yaml
-com_port: "/tmp/nyush_vision_port"
-```
-
-固定下来。以后每次桥重启后，只需要重新 `ln -sf` 一次。
-
-启动视觉：
+当前实机联调最常用、也最推荐的视觉命令是：
 
 ```bash
 cd /home/nyu/Codespace/nyush-rm-vision
-just build
-cmake --build build --target sentry -j12
-./build/sentry configs/sentry.yaml
-```
-
-如果只是想测通讯而不是跑完整视觉，推荐先用：
-
-```bash
-cd /home/nyu/Codespace/nyush-rm-vision
-just test gimbal configs/sentry.yaml
+just test detect --web --send
 ```
 
 注意：
 
-- `sentry` 目标只有在 ROS2 / `sp_msgs` 环境可用时才会被编译
-- 如果 `sentry` 没编出来，先检查 vision 仓库的 ROS2 依赖
+- 这条命令要在 `nyush-rm-vision` 里执行，不在 `nyush-rm-control` 里执行。
+- 它会启动视觉检测测试，并把控制量通过当前 `com_port` 发给下位机。
+- 默认视觉网页是：
 
-### 12.5 当前 `sentry_planner` 启动方式
-
-导航与行为树：
-
-```bash
-cd /home/nyu/sentry_planner
-./start_robot.sh
+```text
+http://127.0.0.1:8888
 ```
 
-这会带起：
+- 如果要真正进入视觉接管，遥控器左边开关需要拨到中间。
+- 当前 `detect` 主线是“看到目标才跟随”，不是完整自动搜索主程序。
 
-- Livox/FAST-LIO
-- 点云转 `/scan`
-- Nav2
-- 行为树
+如果你后面确实要跑视觉仓库里的完整 `sentry` 主程序，再单独确认：
 
-但是要明确：
+- `sentry` target 已经编出来
+- `configs/sentry.yaml` 的 `com_port` 指向当前 `Vision PTY`
 
-- `start_robot.sh` 现在会自动启动 `bt_comm_adapter.py`
-- `start_robot.sh` 仍然不会自动启动 `sentry_bridge.py`
-- `serial_sender.py` 仍需单独订阅 `/cmd_vel_chassis_bt` 并写到 `Radar PTY`
+但对当前这套 bridge + BT + 自瞄联调来说，不再建议把 `./build/sentry configs/sentry.yaml` 当作默认主线。
 
-所以当前“完整桥接版实机链路”的推荐顺序是：
+### 12.5 完整实机启动流程（当前推荐）
 
-终端 1：
+本节默认你要跑的是这条完整链路：
+
+- `nyush-rm-control` 负责 bridge 和可选 dashboard
+- `nyush-rm-vision` 负责 `detect --web --send`
+- `sentry_planner` 负责 Mid360 + FAST-LIO + Nav2 + 行为树 + `bt_comm_adapter.py`
+- `serial_sender.py` 通过 `Radar PTY` 把 `/cmd_vel_chassis_bt` 和 `/robot_control` 发到下位机
+
+开始之前，先确认：
+
+- 下位机已经刷入最新哨兵固件
+- 不要再启动 `rm_serial_driver` 抢 `/dev/ttyACM0`
+- 如果你当前 shell 是 `bash`，就统一使用 `*.bash` 环境脚本
+- `start_robot.sh` 默认不自动开 RViz；只有在本机有图形界面时再加 `ENABLE_RVIZ=1`
+
+推荐直接按下面 5 个终端启动。
+
+终端 1：桥接下位机
 
 ```bash
 cd /home/nyu/Codespace/nyush-rm-control
 just sentry-bridge --port /dev/ttyACM0
 ```
 
-终端 2：
+你需要记住桥打印出来的：
+
+```text
+Vision PTY : /dev/pts/X
+Radar PTY  : /dev/pts/Y
+```
+
+如果桥同时创建了稳定软链接，优先用：
+
+```text
+/tmp/nyush-rm-sentry-vision
+/tmp/nyush-rm-sentry-radar
+```
+
+终端 1B：可选，下位机 dashboard
+
+```bash
+cd /home/nyu/Codespace/nyush-rm-control
+just logger
+```
+
+浏览器访问：
+
+```text
+http://127.0.0.1:8080
+```
+
+终端 2：视觉自瞄主线
 
 ```bash
 cd /home/nyu/Codespace/nyush-rm-vision
-./build/sentry configs/sentry.yaml
+just test detect --web --send
 ```
 
-终端 3：
+浏览器访问：
+
+```text
+http://127.0.0.1:8888
+```
+
+终端 3：导航 + 行为树 + 串口发送
 
 ```bash
+bash
 cd /home/nyu/sentry_planner
-./start_robot.sh
+START_SERIAL_SENDER=1 RADAR_PTY=/tmp/nyush-rm-sentry-radar ./start_robot.sh
 ```
 
-终端 4：
+如果你的 bridge 没有创建稳定软链接，就把 `RADAR_PTY` 换成桥刚打印出来的 `Radar PTY`，例如：
 
 ```bash
-source /opt/ros/humble/setup.zsh
-python3 /home/nyu/Codespace/nyush-rm-vision/serial_sender.py --port <Radar PTY> --ros2 --topic /cmd_vel_chassis_bt
+START_SERIAL_SENDER=1 RADAR_PTY=/dev/pts/4 ./start_robot.sh
 ```
 
-当前状态说明：
+这条脚本默认使用：`/home/nyu/sentry_planner/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml`。如果你现场临时要切别的图，再手动覆盖 `MAP_FILE=...`。
 
-- 理论挂点已经非常清楚：就是 `Radar PTY`
-- `serial_sender.py` 已改成 19 字节，可以直接复用
-- `bt_comm_adapter.py` 已补上 `/cmd_vel_chassis` 和 `/robot_control` 到当前 bridge 链的适配
+这条脚本现在会自动拉起：
+
+- `livox_ros_driver2`
+- 静态 TF
+- `fast_lio`
+- `pointcloud_to_laserscan`
+- `nav2_bringup`
+- `bt_comm_adapter.py`
+- `rm_behavior_tree`
+- 可选的 `serial_sender.py`
+
+如果你本机有显示器并且想看 Nav2 RViz，用：
+
+```bash
+ENABLE_RVIZ=1 START_SERIAL_SENDER=1 RADAR_PTY=/tmp/nyush-rm-sentry-radar ./start_robot.sh
+```
+
+终端 4：可选，键盘一键切行为树分支
+
+```bash
+bash
+source /opt/ros/humble/setup.bash
+source /home/nyu/sentry_planner/rm_decision_ws/install/setup.bash
+python3 /home/nyu/sentry_planner/scripts/bt_hotkey_debug.py
+```
+
+可用按键：
+
+- `0`：`HOME_STANDBY`
+- `1`：`APPROACH_CENTER`
+- `2`：低血量恢复
+- `3`：高热量恢复
+- `4`：被攻击分支
+- `p`：打印当前预设
+- `h`：帮助
+- `q`：退出
+
+注意：这个热键脚本能切游戏/机器人状态，但 `CENTER_HOLD_ATTACK` 这类“已经到中点”的分支仍然取决于真实 `map -> base_link` 位姿，不是单靠热键伪造。
+
+终端 5：可选，Groot2 观察树状态
+
+```bash
+cd ~/Desktop
+./Groot2-v1.9.0-x86_64.AppImage
+```
+
+然后：
+
+- 打开 `/home/nyu/sentry_planner/rm_decision_ws/rm_behavior_tree/config/Project.btproj`
+- 连接 `127.0.0.1:1667`
+
+### 12.6 实机联调时最常看的检查点
+
+最小检查清单：
+
+```bash
+lsof /dev/ttyACM0
+ros2 topic echo /robot_control --once
+ros2 topic echo /cmd_vel_chassis_bt --once
+ros2 topic echo /detector/armors --once
+```
+
+理想状态：
+
+- `/dev/ttyACM0` 只有 `sentry_bridge.py` 占用
+- `/robot_control` 能看到 `scan_enabled / allow_vision_control / search_when_target_lost` 等功能字段
+- `/cmd_vel_chassis_bt` 能看到底盘导航速度和小陀螺角速度
+- `/detector/armors` 在视觉看到目标时非空
+
+车上操作建议：
+
+- 上电后先确认右拨杆在上位，整车处于 `READY`
+- 真正要允许视觉接管时，把左拨杆拨到中位
+- 如果你只是验证 BT/导航链路，可以先不进视觉接管
+- 当前 `detect --web --send` 不是完整自动搜索主程序；它主要负责“检测到目标后跟随”
 
 ## 13. 当前代码中的有效链路和预留链路
 
@@ -650,7 +797,8 @@ python3 /home/nyu/Codespace/nyush-rm-vision/serial_sender.py --port <Radar PTY> 
 ### 13.2 已预留但还没完全接上
 
 - `auto_aim_target_pos` 这条视觉 -> 导航/决策的 ROS2 通路
-- `stop_gimbal_scan` 直接透传到当前 bridge/MCU 链路
+
+`/robot_control` 的功能话题已经接到当前 bridge/MCU 链路；这里还没接上的主要是更高层的视觉 -> 决策反馈闭环。
 
 ### 13.3 不建议混用
 
@@ -761,9 +909,9 @@ just radar --port <Radar PTY>
 
 如果要把整条通讯链进一步收敛成“稳定调决策”的状态，建议优先做这两件事：
 
-1. 把 `stop_gimbal_scan` 也接进当前 bridge/MCU 链路
-   - 目前 `bt_comm_adapter.py` 已把 `chassis_spin_vel` 接到底盘
-   - 但 `stop_gimbal_scan` 还只停留在 ROS 侧 `/robot_control`
+1. 继续把 `/robot_control` 的功能话题用到更完整的比赛状态机里
+   - 目前 `scan_enabled / allow_vision_control / search_when_target_lost / scan_yaw_rate_deg_s / search_pitch_deg` 已经能落到 MCU
+   - 下一步更值得做的是把这些功能量系统地铺到更多行为树节点，而不是再回退成“模拟 RC 挡位”
 2. 把真实裁判系统数据接入当前 bridge 架构
    - 现在 `bt_comm_adapter.py` 可以保底生成 `/game_status`、`/robot_status`、`/all_robot_hp`
    - 但如果要实战闭环，仍然需要真实上游来源替代 fallback
@@ -776,5 +924,5 @@ just radar --port <Radar PTY>
 真实 /dev/ttyACM0 只给 sentry_bridge.py；
 视觉改连 Vision PTY；
 雷达/导航改连 Radar PTY；
-旧 serial_sender.py 现在还需要做协议对齐。
+当前仓库版 serial_sender.py 已经和 bridge 协议对齐。
 ```

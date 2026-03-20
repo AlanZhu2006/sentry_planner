@@ -10,10 +10,10 @@
   - `rm_decision_ws/rm_behavior_tree/config/center_attack_simple.xml`
 - `run_test_a.sh` / `run_test_a_headless.sh` 当前默认启动：
   - `style:=center_attack_simple`
-- `start_robot.sh` 目前仍然默认启动旧树：
-  - `style:=retreat_attack_left`
+- `start_robot.sh` 现在默认也启动：
+  - `style:=center_attack_simple`
 
-所以如果你现在是在调“开赛去中心、到点驻守攻击、低血回家”这套逻辑，应该以 `center_attack_simple.xml` 为准。
+所以如果你现在是在调“开赛去中心、到点驻守攻击、低血回家”这套逻辑，`run_test_a.sh` 和 `start_robot.sh` 已经对到同一棵树了。
 
 ## 1. 先说结论
 
@@ -194,16 +194,22 @@ ReactiveSequence
 
 ### 8.5 `RobotControl`
 
-当前树只通过两个量表达云台 / 底盘状态：
+当前树已经通过一组功能量表达云台 / 底盘状态：
 
-- `stop_gimbal_scan=false`
-  - 云台继续扫描
-- `stop_gimbal_scan=true`
-  - 停止扫描，交给自瞄或下游控制
-- `chassis_spin_vel=0.0`
-  - 不小陀螺
-- `chassis_spin_vel=0.5`
-  - 原地小陀螺
+- `scan_enabled`
+  - 是否启用云台扫描
+- `allow_vision_control`
+  - 是否允许视觉自瞄接管云台
+- `search_when_target_lost`
+  - 自瞄丢目标时是否回到扫描搜索
+- `scan_yaw_rate_deg_s`
+  - 扫描时的云台 yaw 角速度
+- `search_pitch_deg`
+  - 扫描 / 搜索时的目标 pitch
+- `chassis_spin_vel`
+  - 底盘小陀螺角速度
+- `stop_gimbal_scan`
+  - 旧兼容字段，仍可表达“停扫并允许接管”，但不再是唯一控制量
 
 ## 9. 当前通讯链路里它是怎么落到底盘的
 
@@ -220,9 +226,9 @@ ReactiveSequence
 
 - 导航移动已经能通过这棵树真正影响底盘
 - `chassis_spin_vel` 也已经能通过适配层叠加到底盘速度里
-- `stop_gimbal_scan` 目前仍然只是 ROS 侧 `/robot_control` 话题
+- `/robot_control` 的功能字段现在也已经通过 `serial_sender(A3) -> sentry_bridge.py -> SX.control_flags/config -> nyush-rm-control` 落到下位机
 
-如果后面你要让“停止扫描 / 切自瞄”也真正通过串口落到下位机，还需要继续扩展桥接协议或下位机协议。
+也就是说，行为树到中心后已经可以同时做到“底盘小陀螺”“允许视觉自瞄接管云台”“丢目标时回到扫描搜索”，并且还能单独配置扫描角速度和搜索 pitch。
 
 ## 10. 这棵树当前不做什么
 
@@ -280,13 +286,5 @@ ReactiveSequence
 为了避免混淆，这里再强调一次：
 
 - `retreat_attack_left.xml` 还在
-- `start_robot.sh` 目前默认仍然起的是它
-- 它仍然是那套旧的“时间窗 + 是否见敌 + 友方血量”的复杂高层导航状态机
-
-如果你后面要正式把整套入口都切到新逻辑，下一步最自然的收尾就是把：
-
-- `start_robot.sh`
-
-也改成默认启动：
-
-- `style:=center_attack_simple`
+- 但 `start_robot.sh` 现在默认已经切到 `center_attack_simple`
+- 旧树仍然是那套“时间窗 + 是否见敌 + 友方血量”的复杂高层导航状态机，只在你显式指定 `BT_STYLE=retreat_attack_left` 时才建议再用
