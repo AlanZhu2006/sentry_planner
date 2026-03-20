@@ -19,6 +19,10 @@ SERIAL_SENDER_TOPIC="${SERIAL_SENDER_TOPIC:-/cmd_vel_chassis_bt}"
 SERIAL_SENDER_PORT="${SERIAL_SENDER_PORT:-$RADAR_PTY}"
 MAP_FILE="${MAP_FILE:-$HOME/sentry_planner/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml}"
 NAV2_PARAMS_FILE="${NAV2_PARAMS_FILE:-/home/nyu/nav_ws/my_nav2_params.yaml}"
+PUBLISH_NAV2_INITIAL_POSE="${PUBLISH_NAV2_INITIAL_POSE:-1}"
+NAV2_INITIAL_POSE_X="${NAV2_INITIAL_POSE_X:-6.33}"
+NAV2_INITIAL_POSE_Y="${NAV2_INITIAL_POSE_Y:-4.32}"
+NAV2_INITIAL_POSE_YAW="${NAV2_INITIAL_POSE_YAW:-0.0}"
 
 cleanup() {
     echo "正在关闭所有节点..."
@@ -66,6 +70,9 @@ echo ">>> [1/11] 初始化环境..."
 echo "   BT_STYLE=$BT_STYLE"
 echo "   USE_SIM_TIME=$USE_SIM_TIME"
 echo "   ENABLE_RVIZ=$ENABLE_RVIZ"
+if [ "$PUBLISH_NAV2_INITIAL_POSE" = "1" ]; then
+    echo "   NAV2_INITIAL_POSE=($NAV2_INITIAL_POSE_X, $NAV2_INITIAL_POSE_Y, yaw=$NAV2_INITIAL_POSE_YAW)"
+fi
 if [ "$START_SERIAL_SENDER" = "1" ]; then
     echo "   START_SERIAL_SENDER=1 ($SERIAL_SENDER_PORT <- $SERIAL_SENDER_TOPIC)"
 fi
@@ -107,6 +114,32 @@ ros2 launch nav2_bringup bringup_launch.py     use_sim_time:="$USE_SIM_TIME"    
 
 echo ">>> [8/11] 等待 Nav2 启动 (8秒)..."
 sleep 8
+
+if [ "$PUBLISH_NAV2_INITIAL_POSE" = "1" ]; then
+    echo ">>> [8.5/11] 发布 Nav2 初始位姿..."
+    export NAV2_INITIAL_POSE_X NAV2_INITIAL_POSE_Y NAV2_INITIAL_POSE_YAW
+    INITIAL_POSE_MSG="$(python3 - <<'PYPOSE'
+import math
+import os
+
+x = float(os.environ.get("NAV2_INITIAL_POSE_X", "6.33"))
+y = float(os.environ.get("NAV2_INITIAL_POSE_Y", "4.32"))
+yaw = float(os.environ.get("NAV2_INITIAL_POSE_YAW", "0.0"))
+qz = math.sin(yaw * 0.5)
+qw = math.cos(yaw * 0.5)
+cov = [0.0] * 36
+cov[0] = 0.25
+cov[7] = 0.25
+cov[35] = 0.06853891945200942
+print(
+    "{header: {frame_id: 'map'}, pose: {pose: {position: {x: %.4f, y: %.4f, z: 0.0}, orientation: {x: 0.0, y: 0.0, z: %.8f, w: %.8f}}, covariance: [%s]}}"
+    % (x, y, qz, qw, ", ".join(str(v) for v in cov))
+)
+PYPOSE
+)"
+    ros2 topic pub -1 /initialpose geometry_msgs/msg/PoseWithCovarianceStamped "$INITIAL_POSE_MSG" > /dev/null
+    sleep 1
+fi
 
 echo ">>> [9/11] 启动行为树通讯适配层..."
 python3 "$SENTRY_ROOT/scripts/bt_comm_adapter.py" &

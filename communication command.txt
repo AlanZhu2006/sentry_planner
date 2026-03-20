@@ -134,6 +134,7 @@ python3 /home/nyu/Codespace/nyush-rm-vision/serial_sender.py --port /dev/pts/3 -
 说明：
 - 这条命令现在会同时监听 `/cmd_vel_chassis_bt` 和 `/robot_control`
 - `/robot_control` 里的 `scan_enabled / allow_vision_control / search_when_target_lost / scan_yaw_rate_deg_s / search_pitch_deg` 会经新版 `A3` 功能帧一起发给 bridge
+- 同一个 `serial_sender.py --ros2` 进程还会把 bridge 回来的真实裁判系统状态发布成 `/game_status` 和 `/robot_status`
 - `stop_gimbal_scan` 仍兼容，但已经不是唯一控制量
 
 2.7 手工发一条 ROS2 速度做验证
@@ -233,12 +234,18 @@ python3 /home/nyu/Codespace/nyush-rm-vision/serial_sender.py --port /dev/pts/3 -
 source /opt/ros/humble/setup.zsh
 ros2 topic hz /cmd_vel_chassis
 ros2 topic hz /cmd_vel_chassis_bt
+ros2 topic hz /game_status
+ros2 topic hz /robot_status
 ros2 topic echo /cmd_vel_chassis_bt --once
 ros2 topic echo /robot_control --once
 ros2 topic echo /all_robot_hp --once
 ros2 topic echo /robot_status --once
 ros2 topic echo /game_status --once
 ros2 topic echo /detector/armors --once
+
+说明：
+- 在当前实机主线下，`/game_status` 和 `/robot_status` 默认来自 bridge 回传的真实裁判系统数据
+- 如果裁判系统没连上，或者下位机没刷到最新固件，这两个话题可能保持 0 或没有刷新
 
 4.5 键盘一键切行为树分支（当前推荐）
 ------------------------------------
@@ -265,7 +272,8 @@ q -> 退出
 注意：
 - 这个脚本会持续发布 `/game_status` 和 `/robot_status`
 - 它很适合你说的“按一个键切状态并执行对应动作”
-- 但 `CENTER_HOLD_ATTACK` 仍然取决于真实 `map -> base_link` 是否已经到中心附近
+- 但它会覆盖真实裁判系统状态；实机联调真实链路时，不开它更容易看清实际来源
+- `CENTER_HOLD_ATTACK` 仍然取决于真实 `map -> base_link` 是否已经到中心附近
 
 4.6 Groot2 看树状态
 -------------------
@@ -288,6 +296,8 @@ cd ~/Desktop
 --------------
 python3 /home/nyu/Codespace/nyush-rm-control/scripts/sentry_bridge.py --port /dev/ttyACM0
 
+cd /home/nyu/Codespace/nyush-rm-vision
+just test detect --web --send
 终端 1b：下位机 dashboard
 -----------------------
 cd /home/nyu/Codespace/nyush-rm-control
@@ -298,6 +308,8 @@ just logger
 cd /home/nyu/sentry_planner
 START_SERIAL_SENDER=1 RADAR_PTY=/tmp/nyush-rm-sentry-radar ./start_robot.sh
 
+cd /home/nyu/sentry_planner
+ENABLE_RVIZ=1 START_SERIAL_SENDER=1 RADAR_PTY=/tmp/nyush-rm-sentry-radar ./start_robot.sh
 说明：
 - 这样会把 Nav2 + bt_comm_adapter + rm_behavior_tree + serial_sender 一起带起
 - 如果你不想自动起 sender，就改成单独跑 `./start_robot.sh`
@@ -314,6 +326,13 @@ ros2 topic pub /cmd_vel_chassis geometry_msgs/msg/Twist "{linear: {x: 0.10, y: 0
 ros2 topic echo /robot_control --once
 ros2 topic echo /cmd_vel_chassis_bt --once
 
+cd /home/nyu/sentry_planner
+source /opt/ros/humble/setup.bash
+source /home/nyu/sentry_planner/rm_decision_ws/install/setup.bash
+python3 /home/nyu/sentry_planner/scripts/bt_hotkey_debug.py
+
+cd ~/Desktop
+./Groot2-v1.9.0-x86_64.AppImage
 
 6. 快速排障
 ===========
@@ -355,3 +374,21 @@ ENABLE_RVIZ=1 START_SERIAL_SENDER=1 RADAR_PTY=/tmp/nyush-rm-sentry-radar ./start
 6.7 旧文档里还写 /dev/ttyACM0
 ------------------------------
 在当前桥接架构下，serial_sender 和视觉程序都不应该再直连 /dev/ttyACM0
+
+6.8 真实裁判系统话题已经接到当前 bridge 主线
+-------------------------------------------
+当前链路：
+裁判系统 -> C板 huart6 -> MCU ST -> sentry_bridge.py -> Radar PTY -> serial_sender.py --ros2 -> /game_status + /robot_status
+
+实机确认命令：
+source /opt/ros/humble/setup.zsh
+ros2 topic echo /game_status --once
+ros2 topic echo /robot_status --once
+ros2 topic hz /game_status
+ros2 topic hz /robot_status
+
+提示：
+- 前提是下位机已经刷入这次新的哨兵固件
+- 还要保证当前运行的是仓库版 `serial_sender.py`
+- 如果你开了 `bt_hotkey_debug.py`，它会覆盖这两个话题
+

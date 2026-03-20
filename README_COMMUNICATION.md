@@ -329,21 +329,32 @@ MCU 收到后会落到：
 - `chassis_cmd_send.wz`
 - 云台扫描 / 自瞄接管 / 丢目标回扫状态机
 
-### 8.2 MCU -> 雷达侧/桥：`ST`，18 字节
+### 8.2 MCU -> 雷达侧/桥：`ST`，27 字节
 
 帧结构：
 
 ```text
-head[2]      = 'S','T'
-cmd_vx       float
-cmd_vy       float
-cmd_wz       float
-robot_status uint8
-game_status  uint8
-crc16        uint16
+head[2]            = 'S','T'
+cmd_vx             float
+cmd_vy             float
+cmd_wz             float
+robot_status       uint8
+game_status        uint8
+stage_remain_time  uint16
+robot_id           uint8
+current_hp         uint16
+shooter_heat       uint16
+team_color         uint8
+is_attacked        uint8
+crc16              uint16
 ```
 
-它表示 MCU 当前实际采用的底盘命令；其中 `robot_status` 由裁判系统电源管理输出位压成 bitfield，`game_status` 对应 `GameState.game_progress`。桥接脚本目前会消费这两个状态字节，但回雷达侧的旧遥测帧仍只保留 `vx/vy/wz`。
+它表示 MCU 当前实际采用的底盘命令以及一组精简裁判系统状态：
+
+- `robot_status` 仍然是裁判系统电源管理输出位压成的 bitfield
+- `game_status / stage_remain_time / robot_id / current_hp / shooter_heat / team_color / is_attacked` 现在也随 `ST` 一起从 MCU 回来
+
+其中 `is_attacked` 是下位机根据 HP 下降做的短时锁存位，不是裁判系统原始字段原样透传。
 
 ### 8.3 当前桥接脚本对 `SX` 的实际用法
 
@@ -382,18 +393,21 @@ crc16        uint16
 - `vx/vy/wz` 会被桥转成 `SX`
 - `yaw_deg` 当前桥脚本收了，但没有继续映射到 `SX` 的云台增量字段
 
-### 9.2 雷达侧遥测帧：19 字节
+### 9.2 雷达侧遥测帧：19 字节 + 状态包
 
-桥接脚本回给雷达侧的是：
+桥接脚本回给 Radar PTY 的现在不只是一种帧，而是三类：
 
 ```text
-[0xA6][0x6A][vx:4][vy:4][wz:4][reserved0:4][CRC8:1]
+A6 6A + vx + vy + wz + reserved0 + crc8
+5C    + game_progress + stage_remain_time + crc16
+5D    + robot_id + current_hp + shooter_heat + team_color + is_attacked + crc16
 ```
 
 其中：
 
-- `vx/vy/wz` 是由 MCU 的 `ST` 帧转换而来
-- `reserved0` 当前固定为 0
+- `A6 6A` 仍然是旧雷达工具兼容的速度遥测
+- `0x5C` 和 `0x5D` 是桥根据 MCU 的 `ST` 新补发的状态包
+- `serial_sender.py --ros2` 现在会消费这两个状态包，并发布 `/game_status` 和 `/robot_status`
 
 ## 10. `serial_sender.py` 与桥接雷达协议的对齐状态
 
@@ -433,10 +447,11 @@ crc16        uint16
   - 雷达/导航发送器走 `Radar PTY`
   - 真实硬件口仍然只由 `sentry_bridge.py` 占用
 
-当前已经变化的一点是：
+当前已经变化的是：
 
 - 桥接脚本除了把 `vx/vy/wz` 写入 `SX`，还会把 `A3 RobotControl` 里的 `scan_enabled / allow_vision_control / search_when_target_lost / scan_yaw_rate_deg_s / search_pitch_deg` 一起写入 `SX`
-- `serial_sender.py --ros2` 也会同时订阅 `/cmd_vel_chassis_bt` 和 `/robot_control`
+- `serial_sender.py --ros2` 会同时订阅 `/cmd_vel_chassis_bt` 和 `/robot_control`
+- `serial_sender.py --ros2` 还会把 bridge 回来的 `0x5C/0x5D` 状态包发布成 `/game_status` 和 `/robot_status`
 - `stop_gimbal_scan` 仍然兼容，但已经降级成旧树兼容位
 - 云台增量微调 `yaw_delta/pitch_delta` 这条雷达侧直通链仍未启用
 
@@ -477,7 +492,11 @@ Nav2 -> /cmd_vel -> fake_vel_transform -> /cmd_vel_chassis -> bt_comm_adapter.py
 - `/robot_status`
 - `/all_robot_hp`
 
-其中和视觉最直接相关的是 `/detector/armors`。
+其中：
+
+- `/game_status` 和 `/robot_status` 在当前实机主线下，默认由 `serial_sender.py --ros2` 根据 bridge 回传的真实裁判系统状态发布
+- `bt_hotkey_debug.py` 仍然可以人工持续发布这两个话题做调试，但那是覆盖/伪造输入，不是默认上游
+- 和视觉最直接相关的仍然是 `/detector/armors`
 
 当前 `IsDetectEnemy` 的逻辑很简单，只看：
 
@@ -634,6 +653,7 @@ http://127.0.0.1:8888
 - `nyush-rm-vision` 负责 `detect --web --send`
 - `sentry_planner` 负责 Mid360 + FAST-LIO + Nav2 + 行为树 + `bt_comm_adapter.py`
 - `serial_sender.py` 通过 `Radar PTY` 把 `/cmd_vel_chassis_bt` 和 `/robot_control` 发到下位机
+- 同一个 `serial_sender.py` 进程还会把 bridge 回传的真实裁判系统状态发布成 `/game_status` 和 `/robot_status`
 
 开始之前，先确认：
 
@@ -766,7 +786,16 @@ cd ~/Desktop
 lsof /dev/ttyACM0
 ros2 topic echo /robot_control --once
 ros2 topic echo /cmd_vel_chassis_bt --once
+ros2 topic echo /game_status --once
+ros2 topic echo /robot_status --once
 ros2 topic echo /detector/armors --once
+```
+
+如果你现在就是要确认真实裁判系统是否已经进 ROS，再额外看：
+
+```bash
+ros2 topic hz /game_status
+ros2 topic hz /robot_status
 ```
 
 理想状态：
@@ -774,6 +803,7 @@ ros2 topic echo /detector/armors --once
 - `/dev/ttyACM0` 只有 `sentry_bridge.py` 占用
 - `/robot_control` 能看到 `scan_enabled / allow_vision_control / search_when_target_lost` 等功能字段
 - `/cmd_vel_chassis_bt` 能看到底盘导航速度和小陀螺角速度
+- `/game_status` 和 `/robot_status` 在裁判系统在线时不再需要手工 `ros2 topic pub`
 - `/detector/armors` 在视觉看到目标时非空
 
 车上操作建议：
@@ -782,6 +812,96 @@ ros2 topic echo /detector/armors --once
 - 真正要允许视觉接管时，把左拨杆拨到中位
 - 如果你只是验证 BT/导航链路，可以先不进视觉接管
 - 当前 `detect --web --send` 不是完整自动搜索主程序；它主要负责“检测到目标后跟随”
+
+### 12.7 ROS2 Topic 手动调试（不依赖整套行为树）
+
+如果你现在只是想验证 `serial_sender -> bridge -> MCU`，不一定要先启动 `start_robot.sh`。
+
+最小前置条件：
+
+- `nyush-rm-control` 里先跑 `just sentry-bridge --port /dev/ttyACM0`
+- 单独跑仓库版 `serial_sender.py --ros2 --topic /cmd_vel_chassis_bt`
+- 机器人不在急停，右拨杆不要放中位自转档
+
+最小底盘接管测试：
+
+终端 1，持续发布 BT 功能接管：
+
+```bash
+source /opt/ros/humble/setup.zsh
+source /home/nyu/sentry_planner/rm_decision_ws/install/setup.zsh
+ros2 topic pub -r 20 /robot_control rm_decision_interfaces/msg/RobotControl \
+"{stop_gimbal_scan: false, chassis_spin_vel: 0.0, scan_enabled: true, allow_vision_control: false, search_when_target_lost: false, scan_yaw_rate_deg_s: 90.0, search_pitch_deg: 0.0}"
+```
+
+终端 2，持续发布底盘速度：
+
+```bash
+source /opt/ros/humble/setup.zsh
+ros2 topic pub -r 20 /cmd_vel_chassis_bt geometry_msgs/msg/Twist \
+"{linear: {x: 0.20, y: 0.00, z: 0.00}, angular: {x: 0.00, y: 0.00, z: 0.00}}"
+```
+
+注意：
+
+- 单独发 `/cmd_vel_chassis` 或单独发 `/cmd_vel_chassis_bt` 都不够；当前哨兵底盘链还要求 `/robot_control` 在持续刷新，MCU 才会把 BT 当成有效接管方
+- 如果你是用 `start_robot.sh` 起的 sender，它默认监听的是 `/cmd_vel_chassis_bt`，不是 `/cmd_vel_chassis`
+- `serial_sender.py --ros2` 收到速度话题后，终端会打印类似 `[NAV2 -> STM32] vx=... vy=... wz=...`，这是判断速度有没有真的送进 sender 的最快方法
+
+纯云台扫描测试：
+
+```bash
+source /opt/ros/humble/setup.zsh
+source /home/nyu/sentry_planner/rm_decision_ws/install/setup.zsh
+ros2 topic pub -r 20 /robot_control rm_decision_interfaces/msg/RobotControl \
+"{stop_gimbal_scan: false, chassis_spin_vel: 0.0, scan_enabled: true, allow_vision_control: false, search_when_target_lost: false, scan_yaw_rate_deg_s: 120.0, search_pitch_deg: -6.0}"
+```
+
+这条走的是 BT functional scan：
+
+- yaw 匀速转
+- pitch 固定到 `search_pitch_deg`
+- 不会上下摆
+
+如果你想测“像左拨杆中位那样，没目标先搜索，有目标再跟随”的语义，要发下面这条，不是上面那条：
+
+```bash
+source /opt/ros/humble/setup.zsh
+source /home/nyu/sentry_planner/rm_decision_ws/install/setup.zsh
+ros2 topic pub -r 20 /robot_control rm_decision_interfaces/msg/RobotControl \
+"{stop_gimbal_scan: true, chassis_spin_vel: 0.0, scan_enabled: true, allow_vision_control: true, search_when_target_lost: true, scan_yaw_rate_deg_s: 120.0, search_pitch_deg: -6.0}"
+```
+
+这条现在和电控里“左拨杆中位自瞄”语义对齐：
+
+- 没目标时：yaw 转 + pitch 上下扫
+- 识别到目标后：视觉接管云台开始跟随
+
+配套前置条件：
+
+```bash
+cd /home/nyu/Codespace/nyush-rm-vision
+just test detect --web --send
+```
+
+浏览器页面：
+
+```text
+http://127.0.0.1:8888
+```
+
+当前这条 `detect --web --send` 测试链路里：
+
+- 识别到目标时才会发 `AUTO_AIM` 控制云台
+- 默认不会自动开火
+- 日志里 `sent_ctl=true` 说明视觉已经开始接管
+
+现场最容易踩的坑：
+
+- `/robot_control` 一停，BT 接管会超时，底盘/云台就会退回本地逻辑
+- 右拨杆中位的哨兵自转模式会压掉 BT/视觉这条云台链
+- 云台“纯扫描”和“自瞄搜索”是两套不同语义：前者 pitch 固定，后者 pitch 才会上下摆
+- 如果开着视觉又想测纯扫描，视觉偶尔发来的控制会打断扫描，建议临时先关 `just test detect --web --send`
 
 ## 13. 当前代码中的有效链路和预留链路
 
@@ -912,9 +1032,9 @@ just radar --port <Radar PTY>
 1. 继续把 `/robot_control` 的功能话题用到更完整的比赛状态机里
    - 目前 `scan_enabled / allow_vision_control / search_when_target_lost / scan_yaw_rate_deg_s / search_pitch_deg` 已经能落到 MCU
    - 下一步更值得做的是把这些功能量系统地铺到更多行为树节点，而不是再回退成“模拟 RC 挡位”
-2. 把真实裁判系统数据接入当前 bridge 架构
-   - 现在 `bt_comm_adapter.py` 可以保底生成 `/game_status`、`/robot_status`、`/all_robot_hp`
-   - 但如果要实战闭环，仍然需要真实上游来源替代 fallback
+2. 继续把真实裁判系统状态扩到更多决策输入
+   - 当前 bridge 主线已经能把真实 `/game_status`、`/robot_status` 带到 ROS
+   - 下一步如果要进一步减少 fallback，可继续补 `all_robot_hp` 等更完整裁判字段
 
 ---
 
