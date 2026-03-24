@@ -1,6 +1,6 @@
 # NYUSH 哨兵通讯链路与协议说明
 
-最后更新：2026-03-20
+最后更新：2026-03-21
 
 本文专门整理 NYUSH 哨兵当前的通讯链路、协议格式、桥接方式、启动顺序和排障方法。
 
@@ -902,6 +902,80 @@ http://127.0.0.1:8888
 - 右拨杆中位的哨兵自转模式会压掉 BT/视觉这条云台链
 - 云台“纯扫描”和“自瞄搜索”是两套不同语义：前者 pitch 固定，后者 pitch 才会上下摆
 - 如果开着视觉又想测纯扫描，视觉偶尔发来的控制会打断扫描，建议临时先关 `just test detect --web --send`
+
+### 12.8 `serial_sender --ros2` 常见坑：`/robot_control` 没人订阅，底盘不动
+
+这是 2026-03-21 实机桥接联调里已经确认过的一类高频问题。
+
+典型现象：
+
+- `sentry_bridge.py` 在跑
+- `serial_sender.py --ros2 --topic /cmd_vel_chassis --robot-control-topic /robot_control` 在跑
+- `/cmd_vel_chassis` 有 subscriber
+- `/robot_control` 没有 subscriber
+- 底盘仍然完全不响应 bridge 侧速度
+
+根因不是 bridge 没起，而是启动 `serial_sender.py` 时只执行了：
+
+```bash
+source /opt/ros/humble/setup.zsh
+```
+
+但没有继续 source 哨兵工作区 overlay，例如：
+
+```bash
+source /home/nyu/sentry_planner/install/setup.zsh
+```
+
+结果就是：
+
+- Python 进程只能导入 ROS2 基础消息
+- 不能导入 `rm_decision_interfaces/msg/RobotControl`
+- `serial_sender.py --ros2` 会退化成“只订阅 Twist，不订阅 RobotControl”
+- `/robot_control` 发得再勤，也进不了 sender
+
+而当前 MCU 侧只有在 BT/bridge control flag 有效时，才会真正接受 bridge 注入的底盘控制；所以单独看到 `/cmd_vel_chassis` 有 subscriber 还不够，`/robot_control` 也必须真的被 sender 吃到。
+
+最直接的排查命令：
+
+```bash
+source /opt/ros/humble/setup.zsh
+source /home/nyu/sentry_planner/install/setup.zsh
+ros2 topic info /cmd_vel_chassis -v
+ros2 topic info /robot_control -v
+```
+
+理想状态：
+
+- `/cmd_vel_chassis` 的 `Subscription count` 至少为 `1`
+- `/robot_control` 的 `Subscription count` 也至少为 `1`
+
+如果你看到：
+
+```text
+/cmd_vel_chassis -> Subscription count: 1
+/robot_control   -> Subscription count: 0
+```
+
+那就不要继续怀疑底盘、MCU 或桥协议，先重启 sender。
+
+推荐启动方式：
+
+```bash
+source /opt/ros/humble/setup.zsh
+source /home/nyu/sentry_planner/install/setup.zsh
+python3 /home/nyu/Codespace/nyush-rm-vision/serial_sender.py \
+  --port /tmp/nyush-rm-sentry-radar \
+  --ros2 \
+  --topic /cmd_vel_chassis \
+  --robot-control-topic /robot_control
+```
+
+补充说明：
+
+- 旧键盘模式 `serial_sender.py --keyboard` 只会发 legacy radar velocity frame，不会自动发 BT control flag。
+- 在当前 bridge/MCU 逻辑下，这种“只有速度、没有 control flag”的链路通常不会驱动底盘。
+- 所以联调 bridge 时，优先用 `--ros2` 模式，不要先用 `--keyboard` 判断 bridge 是否失效。
 
 ## 13. 当前代码中的有效链路和预留链路
 

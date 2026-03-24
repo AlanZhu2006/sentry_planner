@@ -56,7 +56,6 @@ class BtCommAdapter(Node):
         self.declare_parameter("publish_detector_adapter", True)
         self.declare_parameter("publish_referee_fallback", True)
         self.declare_parameter("publish_cmd_vel_mux", True)
-        self.declare_parameter("use_nav_cmd_wz", False)
 
         self.declare_parameter("detector_rate_hz", 10.0)
         self.declare_parameter("cmd_vel_rate_hz", 30.0)
@@ -104,9 +103,6 @@ class BtCommAdapter(Node):
         )
         self.publish_cmd_vel_mux = (
             self.get_parameter("publish_cmd_vel_mux").get_parameter_value().bool_value
-        )
-        self.use_nav_cmd_wz = (
-            self.get_parameter("use_nav_cmd_wz").get_parameter_value().bool_value
         )
 
         self.detector_timeout_sec = (
@@ -215,9 +211,9 @@ class BtCommAdapter(Node):
             msg.linear.z = float(self.latest_cmd_vel.value.linear.z)
             msg.angular.x = float(self.latest_cmd_vel.value.angular.x)
             msg.angular.y = float(self.latest_cmd_vel.value.angular.y)
-            msg.angular.z = (
-                float(self.latest_cmd_vel.value.angular.z) if self.use_nav_cmd_wz else 0.0
-            )
+            # Never forward Nav2 angular.z to chassis. Rotation is controlled
+            # only by RobotControl.chassis_spin_vel for sentry behavior.
+            msg.angular.z = 0.0
 
         if self.is_fresh(self.latest_robot_control, self.robot_control_timeout_sec):
             msg.angular.z = float(self.latest_robot_control.value.chassis_spin_vel)

@@ -1,12 +1,49 @@
 CURRENT DEBUG FLOW
 ==================
+see pointcloud:
+export LD_PRELOAD=/lib/x86_64-linux-gnu/libusb-1.0.so.0
+cd ~/nav_ws/src/FAST_LIO/PCD/
+pcl_viewer scans.pcd
+
+ROTATE pointcloud:(the address should be changed in pcd2pgm config depending on LIO)
+cd ~/nav_ws/src/FAST_LIO/PCD
+python3 rotate_pcd.py
+
+3d PCD to 2d pgm:
+export LD_PRELOAD=/lib/x86_64-linux-gnu/libusb-1.0.so.0
+cd ~/nav_ws
+source install/setup.bash
+ros2 launch pcd2pgm pcd2pgm_launch.py
+
+?? nav2 ????:
+cd ~/Desktop/map
+ros2 run nav2_map_server map_saver_cli -f 11_map
+
 
 当前只保留我们现在真的在调的链路：
 - RMUL2026 Gazebo 仿真
 - Nav2
 - `center_attack_simple`
 - 手动调 “去中心 / 守中 / 回家”
+python3 /home/nyu/Codespace/nyush-rm-control/scripts/sentry_bridge.py --port /dev/ttyACM0
 
+source /opt/ros/humble/setup.zsh
+source /home/nyu/sentry_planner/install/setup.zsh
+python3 /home/nyu/Codespace/nyush-rm-vision/serial_sender.py \
+  --port /tmp/nyush-rm-sentry-radar \
+  --ros2 \
+  --topic /cmd_vel_chassis \
+  --robot-control-topic /robot_control
+
+source /opt/ros/humble/setup.zsh
+source /home/nyu/sentry_planner/install/setup.zsh
+ros2 topic pub -r 10 /robot_control rm_decision_interfaces/msg/RobotControl \
+"{stop_gimbal_scan: true, chassis_spin_vel: 0.0, scan_enabled: false, allow_vision_control: false, search_when_target_lost: false, scan_yaw_rate_deg_s: 0.0, search_pitch_deg: 0.0}"
+
+source /opt/ros/humble/setup.zsh
+source /home/nyu/sentry_planner/install/setup.zsh
+ros2 topic pub -r 20 /cmd_vel_chassis geometry_msgs/msg/Twist \
+"{linear: {x: 0.0, y: 0.5, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
 
 0. 只在改过行为树代码后才重新编译
 --------------------------------
@@ -36,7 +73,8 @@ ros2 launch rm_nav_bringup bringup_sim.launch.py \
 # 不要和一次性的 smoke test 混着用
 bash ~/sentry_planner/scripts/run_center_attack_debug_session.sh
 
-
+cd /home/nyu/Codespace/nyush-rm-vision
+python3 serial_sender.py --ros2 --port /dev/pts/15 --topic /cmd_vel_chassis_bt
 3. 终端 3：先 source 再手动发输入
 ---------------------------------
 source /opt/ros/humble/setup.zsh
