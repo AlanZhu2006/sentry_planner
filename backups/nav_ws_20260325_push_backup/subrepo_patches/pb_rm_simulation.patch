@@ -1,0 +1,472 @@
+diff --git a/src/rm_localization/icp_registration/include/icp_registration/icp_registration.hpp b/src/rm_localization/icp_registration/include/icp_registration/icp_registration.hpp
+index b446e2e..1fe6900 100644
+--- a/src/rm_localization/icp_registration/include/icp_registration/icp_registration.hpp
++++ b/src/rm_localization/icp_registration/include/icp_registration/icp_registration.hpp
+@@ -79,6 +79,7 @@ private:
+   double score_;
+   double thresh_;
+   double xy_offset_;
++  int xy_search_steps_;
+   double yaw_offset_;
+   double yaw_resolution_;
+   geometry_msgs::msg::Pose initial_pose_;
+@@ -87,4 +88,4 @@ private:
+   bool first_scan_;
+ };
+ } // namespace icp
+-#endif
+\ No newline at end of file
++#endif
+diff --git a/src/rm_localization/icp_registration/src/icp_registration.cpp b/src/rm_localization/icp_registration/src/icp_registration.cpp
+index e5ccba2..6773eba 100644
+--- a/src/rm_localization/icp_registration/src/icp_registration.cpp
++++ b/src/rm_localization/icp_registration/src/icp_registration.cpp
+@@ -1,9 +1,11 @@
+ #include "icp_registration/icp_registration.hpp"
+ #include <Eigen/src/Geometry/Quaternion.h>
+ #include <Eigen/src/Geometry/Transform.h>
++#include <cmath>
+ #include <chrono>
+ #include <geometry_msgs/msg/detail/pose_with_covariance_stamped__struct.hpp>
+ #include <iostream>
++#include <limits>
+ #include <pcl/features/normal_3d.h>
+ #include <pcl/io/pcd_io.h>
+ #include <pcl_conversions/pcl_conversions.h>
+@@ -38,6 +40,20 @@ IcpNode::IcpNode(const rclcpp::NodeOptions &options)
+   pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(
+       new pcl::PointCloud<pcl::PointXYZI>);
+   reader.read(pcd_path_, *cloud);
++  const double map_offset_x = this->declare_parameter("map_offset_x", 0.0);
++  const double map_offset_y = this->declare_parameter("map_offset_y", 0.0);
++  const double map_offset_z = this->declare_parameter("map_offset_z", 0.0);
++  if (std::abs(map_offset_x) > 1e-9 || std::abs(map_offset_y) > 1e-9 ||
++      std::abs(map_offset_z) > 1e-9) {
++    for (auto &point : cloud->points) {
++      point.x += static_cast<float>(map_offset_x);
++      point.y += static_cast<float>(map_offset_y);
++      point.z += static_cast<float>(map_offset_z);
++    }
++    RCLCPP_INFO(this->get_logger(),
++                "Applying map point cloud offset: x=%f y=%f z=%f",
++                map_offset_x, map_offset_y, map_offset_z);
++  }
+   voxel_refine_filter_.setInputCloud(cloud);
+   voxel_refine_filter_.filter(*cloud);
+ 
+@@ -71,6 +87,7 @@ IcpNode::IcpNode(const rclcpp::NodeOptions &options)
+       this->declare_parameter("laser_frame_id", std::string("laser"));
+   thresh_ = this->declare_parameter("thresh", 0.15);
+   xy_offset_ = this->declare_parameter("xy_offset", 0.2);
++  xy_search_steps_ = this->declare_parameter("xy_search_steps", 1);
+   yaw_offset_ = this->declare_parameter("yaw_offset", 30.0) * M_PI / 180.0;
+   yaw_resolution_ =
+       this->declare_parameter("yaw_resolution", 10.0) * M_PI / 180.0;
+@@ -83,6 +100,10 @@ IcpNode::IcpNode(const rclcpp::NodeOptions &options)
+     tf2::Quaternion q;
+     q.setRPY(initial_pose_vec.at(3), initial_pose_vec.at(4),
+              initial_pose_vec.at(5));
++    initial_pose_.orientation.x = q.x();
++    initial_pose_.orientation.y = q.y();
++    initial_pose_.orientation.z = q.z();
++    initial_pose_.orientation.w = q.w();
+   } catch (const std::out_of_range &ex) {
+     RCLCPP_ERROR(this->get_logger(),
+                  "initial_pose is not a vector with 6 elements, what():%s",
+@@ -156,7 +177,50 @@ IcpNode::~IcpNode() {
+ 
+ void IcpNode::pointcloudCallback(
+     const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
+-  pcl::fromROSMsg(*msg, *cloud_in_);
++  pcl::PointCloud<pcl::PointXYZI>::Ptr incoming_cloud(
++      new pcl::PointCloud<pcl::PointXYZI>);
++  pcl::fromROSMsg(*msg, *incoming_cloud);
++
++  if (msg->header.frame_id.empty() || msg->header.frame_id == laser_frame_id_) {
++    *cloud_in_ = *incoming_cloud;
++      } else {
++    try {
++      auto transform = tf_buffer_->lookupTransform(
++          laser_frame_id_, msg->header.frame_id, rclcpp::Time(msg->header.stamp),
++          rclcpp::Duration::from_seconds(0.5));
++      Eigen::Vector3d translation(transform.transform.translation.x,
++                                  transform.transform.translation.y,
++                                  transform.transform.translation.z);
++      Eigen::Quaterniond rotation(transform.transform.rotation.w,
++                                  transform.transform.rotation.x,
++                                  transform.transform.rotation.y,
++                                  transform.transform.rotation.z);
++      cloud_in_->header = incoming_cloud->header;
++      cloud_in_->is_dense = incoming_cloud->is_dense;
++      cloud_in_->width = incoming_cloud->width;
++      cloud_in_->height = incoming_cloud->height;
++      cloud_in_->points.resize(incoming_cloud->points.size());
++      for (std::size_t i = 0; i < incoming_cloud->points.size(); ++i) {
++        const auto &src = incoming_cloud->points[i];
++        auto &dst = cloud_in_->points[i];
++        Eigen::Vector3d point(src.x, src.y, src.z);
++        point = rotation * point + translation;
++        dst.x = point.x();
++        dst.y = point.y();
++        dst.z = point.z();
++        dst.intensity = src.intensity;
++      }
++      RCLCPP_INFO_ONCE(this->get_logger(),
++                       "Transforming ICP input cloud from %s to %s before alignment",
++                       msg->header.frame_id.c_str(), laser_frame_id_.c_str());
++    } catch (tf2::TransformException &ex) {
++      RCLCPP_WARN(this->get_logger(),
++                  "Skipping pointcloud because transform %s <- %s is unavailable: %s",
++                  laser_frame_id_.c_str(), msg->header.frame_id.c_str(),
++                  ex.what());
++      return;
++    }
++  }
+   if (first_scan_) {
+     auto pose_msg =
+         std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>();
+@@ -169,6 +233,12 @@ void IcpNode::pointcloudCallback(
+ 
+ void IcpNode::initialPoseCallback(
+     const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg) {
++  if (!cloud_in_ || cloud_in_->empty()) {
++    RCLCPP_WARN(this->get_logger(),
++                "Skipping ICP alignment because the input cloud is empty");
++    is_ready_ = false;
++    return;
++  }
+ 
+   // Set the initial pose
+   Eigen::Vector3d pos(msg->pose.pose.position.x, msg->pose.pose.position.y,
+@@ -186,8 +256,10 @@ void IcpNode::initialPoseCallback(
+   Eigen::Matrix4d map_to_laser = multiAlignSync(cloud_in_, initial_guess);
+   // Eigen::Matrix4d result = align(cloud_in_, initial_guess);
+   if (!success_) {
+-    map_to_laser = initial_guess;
+     RCLCPP_ERROR(this->get_logger(), "ICP failed");
++    std::lock_guard<std::mutex> lock(mutex_);
++    is_ready_ = false;
++    return;
+   }
+ 
+   // Eigen::Isometry3d laser_to_odom;
+@@ -214,7 +286,7 @@ void IcpNode::initialPoseCallback(
+     is_ready_ = false;
+     return;
+   }
+-  Eigen::Matrix4d result = map_to_laser * laser_to_odom.matrix().cast<double>();
++  Eigen::Matrix4d result = map_to_laser * laser_to_odom;
+   {
+     std::lock_guard lock(mutex_);
+     map_to_odom_.transform.translation.x = result(0, 3);
+@@ -292,13 +364,27 @@ Eigen::Matrix4d IcpNode::multiAlignSync(PointCloudXYZI::Ptr source,
+   Eigen::AngleAxisf pitchAngle(rpy(1), Eigen::Vector3f::UnitY());
+   std::vector<Eigen::Matrix4f> candidates;
+   Eigen::Matrix4f temp_pose;
++  const int yaw_search_steps = yaw_resolution_ > 0.0
++                                   ? std::max(0, static_cast<int>(
++                                                     std::round(yaw_offset_ /
++                                                                yaw_resolution_)))
++                                   : 0;
++  const std::size_t candidate_count =
++      static_cast<std::size_t>(2 * xy_search_steps_ + 1) *
++      static_cast<std::size_t>(2 * xy_search_steps_ + 1) *
++      static_cast<std::size_t>(2 * yaw_search_steps + 1);
+ 
+   RCLCPP_INFO(this->get_logger(), "initial guess: %f, %f, %f, %f, %f, %f",
+               xyz(0), xyz(1), xyz(2), rpy(0), rpy(1), rpy(2));
+-
+-  for (int i = -1; i <= 1; i++) {
+-    for (int j = -1; j <= 1; j++) {
+-      for (int k = -yaw_offset_; k <= yaw_offset_; k++) {
++  RCLCPP_INFO(this->get_logger(),
++              "search window: xy_offset=%f, xy_steps=%d, yaw_offset=%f deg, "
++              "yaw_resolution=%f deg, candidates=%zu",
++              xy_offset_, xy_search_steps_, yaw_offset_ * 180.0 / M_PI,
++              yaw_resolution_ * 180.0 / M_PI, candidate_count);
++
++  for (int i = -xy_search_steps_; i <= xy_search_steps_; i++) {
++    for (int j = -xy_search_steps_; j <= xy_search_steps_; j++) {
++      for (int k = -yaw_search_steps; k <= yaw_search_steps; k++) {
+         Eigen::Vector3f pos(xyz(0) + i * xy_offset_, xyz(1) + j * xy_offset_,
+                             xyz(2));
+         Eigen::AngleAxisf yawAngle(rpy(2) + k * yaw_resolution_,
+@@ -326,7 +412,7 @@ Eigen::Matrix4d IcpNode::multiAlignSync(PointCloudXYZI::Ptr source,
+   PointCloudXYZIN::Ptr align_point(new PointCloudXYZIN);
+ 
+   Eigen::Matrix4f best_rough_transform;
+-  double best_rough_score = 10.0;
++  double best_rough_score = std::numeric_limits<double>::infinity();
+   bool rough_converge = false;
+   auto tic = std::chrono::system_clock::now();
+   for (Eigen::Matrix4f &init_pose : candidates) {
+@@ -335,8 +421,6 @@ Eigen::Matrix4d IcpNode::multiAlignSync(PointCloudXYZI::Ptr source,
+     if (!icp_rough_.hasConverged())
+       continue;
+     double rough_score = icp_rough_.getFitnessScore();
+-    if (rough_score > 2 * thresh_)
+-      continue;
+     if (rough_score < best_rough_score) {
+       best_rough_score = rough_score;
+       rough_converge = true;
+@@ -344,17 +428,32 @@ Eigen::Matrix4d IcpNode::multiAlignSync(PointCloudXYZI::Ptr source,
+     }
+   }
+ 
+-  if (!rough_converge)
++  if (!rough_converge) {
++    RCLCPP_WARN(this->get_logger(),
++                "No rough ICP candidate converged among %zu candidates",
++                candidates.size());
+     return Eigen::Matrix4d::Zero();
++  }
++
++  RCLCPP_INFO(this->get_logger(), "best rough ICP score: %f",
++              best_rough_score);
+ 
+   icp_refine_.setInputSource(refine_source_norm);
+   icp_refine_.align(*align_point, best_rough_transform);
+   score_ = icp_refine_.getFitnessScore();
+ 
+-  if (!icp_refine_.hasConverged())
++  if (!icp_refine_.hasConverged()) {
++    RCLCPP_WARN(this->get_logger(),
++                "Refine ICP did not converge. Best rough score: %f",
++                best_rough_score);
+     return Eigen::Matrix4d::Zero();
+-  if (score_ > thresh_)
++  }
++  if (score_ > thresh_) {
++    RCLCPP_WARN(this->get_logger(),
++                "Refine ICP score %f exceeds threshold %f",
++                score_, thresh_);
+     return Eigen::Matrix4d::Zero();
++  }
+   success_ = true;
+   auto toc = std::chrono::system_clock::now();
+   std::chrono::duration<double> duration = toc - tic;
+diff --git a/src/rm_nav_bringup/config/simulation/pointlio_mid360_sim.yaml b/src/rm_nav_bringup/config/simulation/pointlio_mid360_sim.yaml
+index 97e1f91..0312369 100755
+--- a/src/rm_nav_bringup/config/simulation/pointlio_mid360_sim.yaml
++++ b/src/rm_nav_bringup/config/simulation/pointlio_mid360_sim.yaml
+@@ -3,6 +3,8 @@
+         common:
+             lid_topic: "/livox/lidar"
+             imu_topic: "/livox/imu"
++            odometry_frame: "odom"
++            body_frame: "base_link"
+             con_frame: false # true: if you need to combine several LiDAR frames into one
+             con_frame_num: 1 # the number of frames combined
+             cut_frame: false # true: if you need to cut one LiDAR frame into several subframes
+@@ -55,4 +57,4 @@
+         pcd_save:
+             pcd_save_en: false
+             interval: -1                 # how many LiDAR frames saved in each pcd file;
+-            # -1 : all frames will be saved in ONE pcd file, may lead to memory crash when having too much frames.
+\ No newline at end of file
++            # -1 : all frames will be saved in ONE pcd file, may lead to memory crash when having too much frames.
+diff --git a/src/rm_nav_bringup/urdf/sentry_robot_sim.xacro b/src/rm_nav_bringup/urdf/sentry_robot_sim.xacro
+index e3f56f7..1dd66cd 100644
+--- a/src/rm_nav_bringup/urdf/sentry_robot_sim.xacro
++++ b/src/rm_nav_bringup/urdf/sentry_robot_sim.xacro
+@@ -17,8 +17,6 @@
+   <xacro:arg name="xyz" default="0.12 0.0 0.175" />
+   <xacro:arg name="rpy" default="0 0 0" />
+ 
+-  <link name="dummy"/>
+-
+   <link name="base_link">
+     <visual>
+       <geometry>
+@@ -38,11 +36,6 @@
+     <xacro:default_inertial mass="8.2"/>
+   </link>
+ 
+-  <joint name="dummy_joint" type="fixed">
+-     <parent link="dummy"/>
+-     <child link="base_link"/>
+-  </joint>
+-
+   <link name="wheel_1">
+     <visual>
+       <geometry>
+diff --git a/src/rm_navigation/fake_vel_transform/include/fake_vel_transform/fake_vel_transform.hpp b/src/rm_navigation/fake_vel_transform/include/fake_vel_transform/fake_vel_transform.hpp
+index 3ca3892..846c9b3 100644
+--- a/src/rm_navigation/fake_vel_transform/include/fake_vel_transform/fake_vel_transform.hpp
++++ b/src/rm_navigation/fake_vel_transform/include/fake_vel_transform/fake_vel_transform.hpp
+@@ -49,6 +49,7 @@ private:
+   double current_angle_;
+   double base_link_angle_;
+   float spin_speed_;
++  bool use_nav_wz_;
+ };
+ 
+ }  // namespace fake_vel_transform
+diff --git a/src/rm_navigation/fake_vel_transform/launch/fake_vel_transform.launch.py b/src/rm_navigation/fake_vel_transform/launch/fake_vel_transform.launch.py
+index 18cf552..5d83ef7 100644
+--- a/src/rm_navigation/fake_vel_transform/launch/fake_vel_transform.launch.py
++++ b/src/rm_navigation/fake_vel_transform/launch/fake_vel_transform.launch.py
+@@ -13,7 +13,14 @@ def generate_launch_description():
+         executable='fake_vel_transform_node',
+         output='screen',
+         parameters=[
+-            {'use_sim_time': use_sim_time }
++            {
++                'use_sim_time': use_sim_time,
++                'use_nav_wz': False,
++                'use_path_heading_compensation': False,
++                'swap_nav_xy': False,
++                'chassis_x_sign': 1.0,
++                'chassis_y_sign': 1.0,
++            }
+         ]
+     )
+ 
+diff --git a/src/rm_navigation/fake_vel_transform/src/fake_vel_transform.cpp b/src/rm_navigation/fake_vel_transform/src/fake_vel_transform.cpp
+index 53b0a86..1f98c5c 100644
+--- a/src/rm_navigation/fake_vel_transform/src/fake_vel_transform.cpp
++++ b/src/rm_navigation/fake_vel_transform/src/fake_vel_transform.cpp
+@@ -1,5 +1,7 @@
+ #include "fake_vel_transform/fake_vel_transform.hpp"
+ 
++#include <cmath>
++
+ #include <tf2/utils.h>
+ 
+ #include <rclcpp/logging.hpp>
+@@ -11,6 +13,12 @@ namespace fake_vel_transform
+ const std::string CMD_VEL_TOPIC = "/cmd_vel";
+ const std::string AFTER_TF_CMD_VEL = "/cmd_vel_chassis";
+ const std::string TRAJECTORY_TOPIC = "/local_plan";
++std::string NAV_BASE_FRAME = "base_link";
++std::string PLAN_FRAME = "map";
++bool USE_PATH_HEADING_COMPENSATION = false;
++bool SWAP_NAV_XY = false;
++double CHASSIS_X_SIGN = 1.0;
++double CHASSIS_Y_SIGN = 1.0;
+ const int TF_PUBLISH_FREQUENCY = 20;  // base_link to base_link_fake. Frequency in Hz.
+ 
+ FakeVelTransform::FakeVelTransform(const rclcpp::NodeOptions & options)
+@@ -21,6 +29,18 @@ FakeVelTransform::FakeVelTransform(const rclcpp::NodeOptions & options)
+   // Declare and get the spin speed parameter
+   this->declare_parameter<float>("spin_speed", -6.0);
+   this->get_parameter("spin_speed", spin_speed_);
++  this->declare_parameter<bool>("use_nav_wz", false);
++  this->get_parameter("use_nav_wz", use_nav_wz_);
++  this->declare_parameter<std::string>("nav_base_frame", NAV_BASE_FRAME);
++  this->get_parameter("nav_base_frame", NAV_BASE_FRAME);
++  this->declare_parameter<bool>("use_path_heading_compensation", USE_PATH_HEADING_COMPENSATION);
++  this->get_parameter("use_path_heading_compensation", USE_PATH_HEADING_COMPENSATION);
++  this->declare_parameter<bool>("swap_nav_xy", SWAP_NAV_XY);
++  this->get_parameter("swap_nav_xy", SWAP_NAV_XY);
++  this->declare_parameter<double>("chassis_x_sign", CHASSIS_X_SIGN);
++  this->get_parameter("chassis_x_sign", CHASSIS_X_SIGN);
++  this->declare_parameter<double>("chassis_y_sign", CHASSIS_Y_SIGN);
++  this->get_parameter("chassis_y_sign", CHASSIS_Y_SIGN);
+ 
+   // TF broadcaster
+   tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+@@ -45,34 +65,75 @@ FakeVelTransform::FakeVelTransform(const rclcpp::NodeOptions & options)
+ // Get the local pose from planner
+ void FakeVelTransform::localPoseCallback(const nav_msgs::msg::Path::SharedPtr msg)
+ {
++  if (!USE_PATH_HEADING_COMPENSATION) {
++    current_angle_ = 0.0;
++    return;
++  }
++
+   if (!msg || msg->poses.empty()) {
+     RCLCPP_WARN(get_logger(), "Received empty or invalid PoseArray message");
+     return;
+   }
+ 
+-  // Choose the pose based on the size of the poses array
++  // Choose a representative pose along the local plan.
+   size_t index = std::min(msg->poses.size() / 4, msg->poses.size() - 1);
+   const geometry_msgs::msg::Pose & selected_pose = msg->poses[index].pose;
+ 
+-  // Update current angle based on the difference between teb_angle and base_link_angle_
+-  double teb_angle = tf2::getYaw(selected_pose.orientation);
+-  current_angle_ = teb_angle - base_link_angle_;
++  try {
++    if (!msg->header.frame_id.empty()) {
++      PLAN_FRAME = msg->header.frame_id;
++    }
++
++    geometry_msgs::msg::TransformStamped transform_stamped;
++    transform_stamped = tf2_buffer_->lookupTransform(PLAN_FRAME, NAV_BASE_FRAME, tf2::TimePointZero);
++    base_link_angle_ = tf2::getYaw(transform_stamped.transform.rotation);
++
++    // Derive the path heading from neighboring positions instead of trusting
++    // pose.orientation directly. For omni trajectories, local plan orientations
++    // can be 180 deg ambiguous even when the geometric path direction is correct.
++    double path_heading = tf2::getYaw(selected_pose.orientation);
++    if (msg->poses.size() >= 2) {
++      size_t next_index = std::min(index + 1, msg->poses.size() - 1);
++      if (next_index == index && index > 0) {
++        next_index = index - 1;
++      }
++
++      const auto & current_position = msg->poses[index].pose.position;
++      const auto & neighbor_position = msg->poses[next_index].pose.position;
++      const double dx = neighbor_position.x - current_position.x;
++      const double dy = neighbor_position.y - current_position.y;
++      if (std::hypot(dx, dy) > 1e-4) {
++        path_heading = std::atan2(dy, dx);
++      }
++    }
++
++    const double angle_delta = path_heading - base_link_angle_;
++    current_angle_ = std::atan2(std::sin(angle_delta), std::cos(angle_delta));
++  } catch (tf2::TransformException & ex) {
++    RCLCPP_INFO(this->get_logger(), "Could not transform %s to %s: %s", PLAN_FRAME.c_str(), NAV_BASE_FRAME.c_str(), ex.what());
++  }
+ }
+ 
+ // Transform the velocity from base_link to base_link_fake
+ void FakeVelTransform::cmdVelCallback(const geometry_msgs::msg::Twist::SharedPtr msg)
+ {
+   try {
+-    geometry_msgs::msg::TransformStamped transform_stamped;
+-    transform_stamped = tf2_buffer_->lookupTransform("odom", "base_link", tf2::TimePointZero);
+-    base_link_angle_ = tf2::getYaw(transform_stamped.transform.rotation);
+-
+-    double angle_diff = -current_angle_;
++    const double angle_diff = USE_PATH_HEADING_COMPENSATION ? -current_angle_ : 0.0;
+ 
+     geometry_msgs::msg::Twist aft_tf_vel;
+-    aft_tf_vel.angular.z = (msg->angular.z != 0) ? spin_speed_ : 0;
+-    aft_tf_vel.linear.x = msg->linear.x * cos(angle_diff) + msg->linear.y * sin(angle_diff);
+-    aft_tf_vel.linear.y = -msg->linear.x * sin(angle_diff) + msg->linear.y * cos(angle_diff);
++    const double nav_frame_x =
++      msg->linear.x * cos(angle_diff) + msg->linear.y * sin(angle_diff);
++    const double nav_frame_y =
++      -msg->linear.x * sin(angle_diff) + msg->linear.y * cos(angle_diff);
++
++    const double chassis_cmd_x = SWAP_NAV_XY ? nav_frame_y : nav_frame_x;
++    const double chassis_cmd_y = SWAP_NAV_XY ? nav_frame_x : nav_frame_y;
++
++    // Default to the standard Nav2 x/y convention and only enable the old
++    // axis-swap behavior explicitly for legacy bring-up experiments.
++    aft_tf_vel.angular.z = (use_nav_wz_ && msg->angular.z != 0.0) ? spin_speed_ : 0.0;
++    aft_tf_vel.linear.x = CHASSIS_X_SIGN * chassis_cmd_x;
++    aft_tf_vel.linear.y = CHASSIS_Y_SIGN * chassis_cmd_y;
+ 
+     cmd_vel_chassis_pub_->publish(aft_tf_vel);
+   } catch (tf2::TransformException & ex) {
+@@ -85,7 +146,7 @@ void FakeVelTransform::publishTransform()
+ {
+   geometry_msgs::msg::TransformStamped t;
+   t.header.stamp = get_clock()->now();
+-  t.header.frame_id = "base_link";
++  t.header.frame_id = NAV_BASE_FRAME;
+   t.child_frame_id = "base_link_fake";
+   tf2::Quaternion q;
+   q.setRPY(0, 0, current_angle_);
+@@ -100,4 +161,4 @@ void FakeVelTransform::publishTransform()
+ // Register the component with class_loader.
+ // This acts as a sort of entry point, allowing the component to be discoverable when its library
+ // is being loaded into a running process.
+-RCLCPP_COMPONENTS_REGISTER_NODE(fake_vel_transform::FakeVelTransform)
+\ No newline at end of file
++RCLCPP_COMPONENTS_REGISTER_NODE(fake_vel_transform::FakeVelTransform)

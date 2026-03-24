@@ -1,0 +1,715 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 75e0b30..0d3ad0d 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -46,7 +46,8 @@ find_package(pcl_ros REQUIRED)
+ find_package(pcl_conversions REQUIRED)
+ find_package(tf2_ros REQUIRED)
+ find_package(visualization_msgs REQUIRED)
+-# find_package(livox_ros_driver2 REQUIRED)
++find_package(livox_ros_driver2 REQUIRED)
++add_definitions(-DUSE_LIVOX_ROS_DRIVER2)
+ 
+ find_package(Eigen3 REQUIRED)
+ 
+@@ -79,7 +80,7 @@ ament_target_dependencies(pointlio_mapping
+         pcl_conversions
+         tf2_ros
+         visualization_msgs
+-        # livox_ros_driver2
++        livox_ros_driver2
+ )
+ target_link_libraries(pointlio_mapping ${PYTHON_LIBRARIES})
+ target_include_directories(pointlio_mapping PRIVATE ${PYTHON_INCLUDE_DIRS})
+@@ -105,7 +106,7 @@ ament_export_dependencies(rclcpp
+   pcl_conversions
+   tf2_ros
+   visualization_msgs
+-  # livox_ros_driver2
++  livox_ros_driver2
+   Eigen3
+ )
+ 
+diff --git a/Log/guide.md b/Log/guide.md
+deleted file mode 100644
+index 883b3d4..0000000
+--- a/Log/guide.md
++++ /dev/null
+@@ -1 +0,0 @@
+-Here saved the debug records which can be drew by the ../log/plot.py. The record function can be found frm the MACRO: DEBUG_FILE_DIR(name) in common_lib.h.
+diff --git a/Log/imu.txt b/Log/imu.txt
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/Log/plot.py b/Log/plot.py
+deleted file mode 100644
+index b5d1c1a..0000000
+--- a/Log/plot.py
++++ /dev/null
+@@ -1,46 +0,0 @@
+-# import matplotlib
+-# matplotlib.use('Agg')
+-import numpy as np
+-import matplotlib.pyplot as plt
+-
+-a_out=np.loadtxt('mat_out.txt')
+-#######for normal#######
+-fig, axs = plt.subplots(3,2)
+-lab_out = ['', 'out-x', 'out-y', 'out-z']
+-plot_ind = range(7,10)
+-time=a_out[:,0]
+-axs[0,0].set_title('Attitude')
+-axs[1,0].set_title('Translation')
+-axs[2,0].set_title('Velocity')
+-axs[0,1].set_title('bg')
+-axs[1,1].set_title('ba')
+-axs[2,1].set_title('Gravity')
+-for i in range(1,4):
+-	for j in range(6):
+-	    axs[j%3, j//3].plot(time, a_out[:,i+j*3],'.-', label=lab_out[i])
+-	for j in range(6):
+-		axs[j%3, j//3].grid()
+-		axs[j%3, j//3].legend()
+-plt.grid()
+-    #######for normal#######
+-
+-
+-#### Draw IMU data
+-#fig, axs = plt.subplots(2)
+-#imu=np.loadtxt('imu_pbp.txt')
+-#time=imu[:,0]
+-#axs[0].set_title('Gyroscope')
+-#axs[1].set_title('Accelerameter')
+-#lab_1 = ['gyr-x', 'gyr-y', 'gyr-z']
+-#lab_2 = ['acc-x', 'acc-y', 'acc-z']
+-#for i in range(3):
+-    #if i==1:
+-#    	axs[0].plot(time, imu[:,i+1],'.-', label=lab_1[i])
+-#    	axs[1].plot(time, imu[:,i+4],'.-', label=lab_2[i])
+-#for i in range(2):
+-    #axs[i].set_xlim(386,389)
+-#    axs[i].grid()
+-#    axs[i].legend()
+-#plt.grid()
+-
+-plt.show()
+diff --git a/Log/plot_imu.py b/Log/plot_imu.py
+deleted file mode 100644
+index 0177273..0000000
+--- a/Log/plot_imu.py
++++ /dev/null
+@@ -1,125 +0,0 @@
+-# import matplotlib
+-# matplotlib.use('Agg')
+-import numpy as np
+-import matplotlib.pyplot as plt
+-
+-#### Draw IMU data
+-fig, axs = plt.subplots(2)
+-imu=np.loadtxt('imu_pbp.txt')
+-time=imu[:,0]
+-axs[0].set_title('Gyroscope')
+-axs[1].set_title('Accelerameter')
+-lab_1 = ['gyr-x', 'gyr-y', 'gyr-z']
+-lab_2 = ['acc-x', 'acc-y', 'acc-z']
+-for i in range(3):
+-    #if i==1:
+-    	axs[0].plot(time, imu[:,i+1],'.-', label=lab_1[i])
+-    	axs[1].plot(time, imu[:,i+4],'.-', label=lab_2[i])
+-for i in range(2):
+-    #axs[i].set_xlim(386,389)
+-    axs[i].grid()
+-    axs[i].legend()
+-plt.grid()
+-
+-#fig, axs = plt.subplots(5)
+-#axs[0].set_title('miss')
+-#axs[1].set_title('miss')
+-#axs[2].set_title('miss')
+-#axs[3].set_title('miss')
+-#axs[4].set_title('miss')
+-#len_time1 = np.arange(0,1977)
+-#len_time2 = np.arange(1977, 3954)
+-#len_time3 = np.arange(3954,5931)
+-#len_time4 = np.arange(5931,7908)
+-#len_time5 = np.arange(7908,9885)
+-    #if i==1:
+-#axs[0].plot(len_time1, time[0:1977],'.-', label='check')
+-#axs[1].plot(len_time2, time[1977:3954],'.-', label='check')
+-#axs[2].plot(len_time3, time[3954:5931],'.-', label='check')
+-#axs[3].plot(len_time4, time[5931:7908],'.-', label='check')
+-#axs[4].plot(len_time5, time[7908:9885],'.-', label='check')
+-    #axs[i].set_xlim(386,389)
+-#axs[0].grid()
+-#axs[0].legend()
+-#axs[1].grid()
+-#axs[1].legend()
+-#axs[2].grid()
+-#axs[2].legend()
+-#axs[3].grid()
+-#axs[3].legend()
+-#axs[4].grid()
+-#axs[4].legend()
+-#plt.grid()
+-
+-#fig, axs = plt.subplots(5)
+-#axs[0].set_title('miss')
+-#axs[1].set_title('miss')
+-#axs[2].set_title('miss')
+-#axs[3].set_title('miss')
+-#axs[4].set_title('miss')
+-#len_time1 = np.arange(9885,9885+1977)
+-#len_time2 = np.arange(9885+1977,9885+3954)
+-#len_time3 = np.arange(9885+3954,9885+5931)
+-#len_time4 = np.arange(9885+5931,9885+7908)
+-#len_time5 = np.arange(9885+7908,9885+9885)
+-    #if i==1:
+-#axs[0].plot(len_time1, time[9885+0:9885+1977],'.-', label='check')
+-#axs[1].plot(len_time2, time[9885+1977:9885+3954],'.-', label='check')
+-#axs[2].plot(len_time3, time[9885+3954:9885+5931],'.-', label='check')
+-#axs[3].plot(len_time4, time[9885+5931:9885+7908],'.-', label='check')
+-#axs[4].plot(len_time5, time[9885+7908:9885+9885],'.-', label='check')
+-    #axs[i].set_xlim(386,389)
+-#axs[0].grid()
+-#axs[0].legend()
+-#axs[1].grid()
+-#axs[1].legend()
+-#axs[2].grid()
+-#axs[2].legend()
+-#axs[3].grid()
+-#axs[3].legend()
+-#axs[4].grid()
+-#axs[4].legend()
+-#plt.grid()
+-
+-# #### Draw time calculation
+-# plt.figure(3)
+-# fig = plt.figure()
+-# font1 = {'family' : 'Times New Roman',
+-# 'weight' : 'normal',
+-# 'size'   : 12,
+-# }
+-# c="red"
+-# a_out1=np.loadtxt('Log/mat_out_time_indoor1.txt')
+-# a_out2=np.loadtxt('Log/mat_out_time_indoor2.txt')
+-# a_out3=np.loadtxt('Log/mat_out_time_outdoor.txt')
+-# # n = a_out[:,1].size
+-# # time_mean = a_out[:,1].mean()
+-# # time_se   = a_out[:,1].std() / np.sqrt(n)
+-# # time_err  = a_out[:,1] - time_mean
+-# # feat_mean = a_out[:,2].mean()
+-# # feat_err  = a_out[:,2] - feat_mean
+-# # feat_se   = a_out[:,2].std() / np.sqrt(n)
+-# ax1 = fig.add_subplot(111)
+-# ax1.set_ylabel('Effective Feature Numbers',font1)
+-# ax1.boxplot(a_out1[:,2], showfliers=False, positions=[0.9])
+-# ax1.boxplot(a_out2[:,2], showfliers=False, positions=[1.9])
+-# ax1.boxplot(a_out3[:,2], showfliers=False, positions=[2.9])
+-# ax1.set_ylim([0, 3000])
+-
+-# ax2 = ax1.twinx()
+-# ax2.spines['right'].set_color('red')
+-# ax2.set_ylabel('Compute Time (ms)',font1)
+-# ax2.yaxis.label.set_color('red')
+-# ax2.tick_params(axis='y', colors='red')
+-# ax2.boxplot(a_out1[:,1]*1000, showfliers=False, positions=[1.1],boxprops=dict(color=c),capprops=dict(color=c),whiskerprops=dict(color=c))
+-# ax2.boxplot(a_out2[:,1]*1000, showfliers=False, positions=[2.1],boxprops=dict(color=c),capprops=dict(color=c),whiskerprops=dict(color=c))
+-# ax2.boxplot(a_out3[:,1]*1000, showfliers=False, positions=[3.1],boxprops=dict(color=c),capprops=dict(color=c),whiskerprops=dict(color=c))
+-# ax2.set_xlim([0.5, 3.5])
+-# ax2.set_ylim([0, 100])
+-
+-# plt.xticks([1,2,3], ('Outdoor Scene', 'Indoor Scene 1', 'Indoor Scene 2'))
+-# # # print(time_se)
+-# # # print(a_out3[:,2])
+-# plt.grid()
+-# plt.savefig("time.pdf", dpi=1200)
+-plt.show()
+diff --git a/Log/plot_out.py b/Log/plot_out.py
+deleted file mode 100644
+index 8dd80cb..0000000
+--- a/Log/plot_out.py
++++ /dev/null
+@@ -1,178 +0,0 @@
+-# import matplotlib
+-# matplotlib.use('Agg')
+-import numpy as np
+-import matplotlib.pyplot as plt
+-
+-# a_pre=np.loadtxt('mat_pre.txt')
+-a_out=np.loadtxt('mat_out.txt')
+-if((a_out.shape[1] != 19) & (a_out.shape[1] != 20)):
+-    ######for ikfom
+-    fig, axs = plt.subplots(4,2)
+-    #lab_pre = ['', 'pre-x', 'pre-y', 'pre-z']
+-    lab_out = ['', 'out-x', 'out-y', 'out-z']
+-    plot_ind = range(7,10)
+-    time=a_out[:,0]
+-    axs[0,0].set_title('Attitude')
+-    axs[1,0].set_title('Translation')
+-    axs[2,0].set_title('Velocity')
+-    axs[3,0].set_title('Angular velocity')
+-    axs[0,1].set_title('Acceleration')
+-    axs[1,1].set_title('Gravity')
+-    axs[2,1].set_title('bg')
+-    axs[3,1].set_title('ba')
+-    for i in range(1,4):
+-        for j in range(8):
+-            #axs[j%4, j//4].plot(time, a_pre[:,i+j*3],'.-', label=lab_pre[i])
+-            axs[j%4, j//4].plot(time, a_out[:,i+j*3],'.-', label=lab_out[i])
+-    for j in range(8):
+-        # axs[j].set_xlim(386,389)
+-        axs[j%4, j//4].grid()
+-        axs[j%4, j//4].legend()
+-    plt.grid()
+-    ######for ikfom#######
+-else:
+-    #######for normal#######
+-    fig, axs = plt.subplots(3,2)
+-    lab_pre = ['', 'pre-x', 'pre-y', 'pre-z']
+-    lab_out = ['', 'out-x', 'out-y', 'out-z']
+-    plot_ind = range(7,10)
+-    time=a_out[:,0]
+-    time1 = a_pre[:,0]
+-    axs[0,0].set_title('Attitude')
+-    axs[1,0].set_title('Translation')
+-    axs[2,0].set_title('Velocity')
+-    axs[0,1].set_title('bg')
+-    axs[1,1].set_title('ba')
+-    axs[2,1].set_title('Gravity')
+-    for i in range(1,4):
+-        for j in range(6):
+-            axs[j%3, j/3].plot(time1, a_pre[:,i+j*3],'.-', label=lab_pre[i])
+-            axs[j%3, j/3].plot(time, a_out[:,i+j*3],'.-', label=lab_out[i])
+-    for j in range(6):
+-        # axs[j].set_xlim(386,389)
+-        axs[j%3, j//3].grid()
+-        axs[j%3, j//3].legend()
+-    plt.grid()
+-    #######for normal#######
+-
+-
+-#### Draw IMU data
+-fig, axs = plt.subplots(2)
+-imu=np.loadtxt('imu_pbp.txt')
+-time=imu[:,0]
+-axs[0].set_title('Gyroscope')
+-axs[1].set_title('Accelerameter')
+-lab_1 = ['gyr-x', 'gyr-y', 'gyr-z']
+-lab_2 = ['acc-x', 'acc-y', 'acc-z']
+-for i in range(3):
+-    #if i==1:
+-    	axs[0].plot(time, imu[:,i+1],'.-', label=lab_1[i])
+-    	axs[1].plot(time, imu[:,i+4],'.-', label=lab_2[i])
+-for i in range(2):
+-    #axs[i].set_xlim(386,389)
+-    axs[i].grid()
+-    axs[i].legend()
+-plt.grid()
+-
+-#fig, axs = plt.subplots(5)
+-#axs[0].set_title('miss')
+-#axs[1].set_title('miss')
+-#axs[2].set_title('miss')
+-#axs[3].set_title('miss')
+-#axs[4].set_title('miss')
+-#len_time1 = np.arange(0,1977)
+-#len_time2 = np.arange(1977, 3954)
+-#len_time3 = np.arange(3954,5931)
+-#len_time4 = np.arange(5931,7908)
+-#len_time5 = np.arange(7908,9885)
+-    #if i==1:
+-#axs[0].plot(len_time1, time[0:1977],'.-', label='check')
+-#axs[1].plot(len_time2, time[1977:3954],'.-', label='check')
+-#axs[2].plot(len_time3, time[3954:5931],'.-', label='check')
+-#axs[3].plot(len_time4, time[5931:7908],'.-', label='check')
+-#axs[4].plot(len_time5, time[7908:9885],'.-', label='check')
+-    #axs[i].set_xlim(386,389)
+-#axs[0].grid()
+-#axs[0].legend()
+-#axs[1].grid()
+-#axs[1].legend()
+-#axs[2].grid()
+-#axs[2].legend()
+-#axs[3].grid()
+-#axs[3].legend()
+-#axs[4].grid()
+-#axs[4].legend()
+-#plt.grid()
+-
+-#fig, axs = plt.subplots(5)
+-#axs[0].set_title('miss')
+-#axs[1].set_title('miss')
+-#axs[2].set_title('miss')
+-#axs[3].set_title('miss')
+-#axs[4].set_title('miss')
+-#len_time1 = np.arange(9885,9885+1977)
+-#len_time2 = np.arange(9885+1977,9885+3954)
+-#len_time3 = np.arange(9885+3954,9885+5931)
+-#len_time4 = np.arange(9885+5931,9885+7908)
+-#len_time5 = np.arange(9885+7908,9885+9885)
+-    #if i==1:
+-#axs[0].plot(len_time1, time[9885+0:9885+1977],'.-', label='check')
+-#axs[1].plot(len_time2, time[9885+1977:9885+3954],'.-', label='check')
+-#axs[2].plot(len_time3, time[9885+3954:9885+5931],'.-', label='check')
+-#axs[3].plot(len_time4, time[9885+5931:9885+7908],'.-', label='check')
+-#axs[4].plot(len_time5, time[9885+7908:9885+9885],'.-', label='check')
+-    #axs[i].set_xlim(386,389)
+-#axs[0].grid()
+-#axs[0].legend()
+-#axs[1].grid()
+-#axs[1].legend()
+-#axs[2].grid()
+-#axs[2].legend()
+-#axs[3].grid()
+-#axs[3].legend()
+-#axs[4].grid()
+-#axs[4].legend()
+-#plt.grid()
+-
+-# #### Draw time calculation
+-# plt.figure(3)
+-# fig = plt.figure()
+-# font1 = {'family' : 'Times New Roman',
+-# 'weight' : 'normal',
+-# 'size'   : 12,
+-# }
+-# c="red"
+-# a_out1=np.loadtxt('Log/mat_out_time_indoor1.txt')
+-# a_out2=np.loadtxt('Log/mat_out_time_indoor2.txt')
+-# a_out3=np.loadtxt('Log/mat_out_time_outdoor.txt')
+-# # n = a_out[:,1].size
+-# # time_mean = a_out[:,1].mean()
+-# # time_se   = a_out[:,1].std() / np.sqrt(n)
+-# # time_err  = a_out[:,1] - time_mean
+-# # feat_mean = a_out[:,2].mean()
+-# # feat_err  = a_out[:,2] - feat_mean
+-# # feat_se   = a_out[:,2].std() / np.sqrt(n)
+-# ax1 = fig.add_subplot(111)
+-# ax1.set_ylabel('Effective Feature Numbers',font1)
+-# ax1.boxplot(a_out1[:,2], showfliers=False, positions=[0.9])
+-# ax1.boxplot(a_out2[:,2], showfliers=False, positions=[1.9])
+-# ax1.boxplot(a_out3[:,2], showfliers=False, positions=[2.9])
+-# ax1.set_ylim([0, 3000])
+-
+-# ax2 = ax1.twinx()
+-# ax2.spines['right'].set_color('red')
+-# ax2.set_ylabel('Compute Time (ms)',font1)
+-# ax2.yaxis.label.set_color('red')
+-# ax2.tick_params(axis='y', colors='red')
+-# ax2.boxplot(a_out1[:,1]*1000, showfliers=False, positions=[1.1],boxprops=dict(color=c),capprops=dict(color=c),whiskerprops=dict(color=c))
+-# ax2.boxplot(a_out2[:,1]*1000, showfliers=False, positions=[2.1],boxprops=dict(color=c),capprops=dict(color=c),whiskerprops=dict(color=c))
+-# ax2.boxplot(a_out3[:,1]*1000, showfliers=False, positions=[3.1],boxprops=dict(color=c),capprops=dict(color=c),whiskerprops=dict(color=c))
+-# ax2.set_xlim([0.5, 3.5])
+-# ax2.set_ylim([0, 100])
+-
+-# plt.xticks([1,2,3], ('Outdoor Scene', 'Indoor Scene 1', 'Indoor Scene 2'))
+-# # # print(time_se)
+-# # # print(a_out3[:,2])
+-# plt.grid()
+-# plt.savefig("time.pdf", dpi=1200)
+-plt.show()
+diff --git a/config/mid360.yaml b/config/mid360.yaml
+index 0e38af0..de07f7b 100644
+--- a/config/mid360.yaml
++++ b/config/mid360.yaml
+@@ -3,6 +3,7 @@
+         common:
+             lid_topic: "/livox/lidar"
+             imu_topic: "/livox/imu"
++            map_frame: "camera_init"
+             con_frame: false # true: if you need to combine several LiDAR frames into one
+             con_frame_num: 1 # the number of frames combined
+             cut_frame: false # true: if you need to cut one LiDAR frame into several subframes
+@@ -11,7 +12,7 @@
+             # the timestamp of IMU is transferred from the current timeline to LiDAR's timeline by subtracting this value
+ 
+         preprocess:
+-            lidar_type: 1      # 1 for Livox serials LiDAR, 2 for Velodyne LiDAR, 3 for ouster LiDAR
++            lidar_type: 1    # 1 for Livox serials LiDAR, 2 for Velodyne LiDAR, 3 for ouster LiDAR
+             scan_line: 4
+             timestamp_unit: 3   # the unit of time/t field in the PointCloud2 rostopic: 0-second, 1-milisecond, 2-microsecond, 3-nanosecond.
+             blind: 0.5
+@@ -56,4 +57,4 @@
+         pcd_save:
+             pcd_save_en: false
+             interval: -1                 # how many LiDAR frames saved in each pcd file;
+-            # -1 : all frames will be saved in ONE pcd file, may lead to memory crash when having too much frames.
+\ No newline at end of file
++            # -1 : all frames will be saved in ONE pcd file, may lead to memory crash when having too much frames.
+diff --git a/config/unilidar_l2.yaml b/config/unilidar_l2.yaml
+index 3d868c5..af82739 100644
+--- a/config/unilidar_l2.yaml
++++ b/config/unilidar_l2.yaml
+@@ -5,32 +5,33 @@
+             imu_topic: "/unilidar/imu" 
+             con_frame: false # true: if you need to combine several LiDAR frames into one
+             con_frame_num: 1 # the number of frames combined
+-            cut_frame: false # true: if you need to cut one LiDAR frame into several subframes
++            cut_frame: true # true: if you need to cut one LiDAR frame into several subframes
+             cut_frame_time_interval: 0.1 # should be integral fraction of 1 / LiDAR frequency   
+             time_lag_imu_to_lidar: 0.0 # Time offset between LiDAR and IMU calibrated by other algorithms, e.g., LI-Init (find in Readme)
+                                         # the timesample of IMU is transferred from the current timeline to LiDAR's timeline by subtracting this value
+ 
+         preprocess:
+             lidar_type: 5
+-            scan_line: 18
+-            timestamp_unit: 0           # the unit of time/t field in the PointCloud2 rostopic: 0-second, 1-milisecond, 2-microsecond, 3-nanosecond.
+-            blind: 0.5
++            scan_line: 18 # Unitree Unilidar L2 has 18 scan lines
++            timestamp_unit: 0          # the unit of time/t field in the PointCloud2 rostopic: 0-second, 1-milisecond, 2-microsecond, 3-nanosecond.
++            blind: 0.6
+ 
+         mapping:
+             imu_en: true
+-            start_in_aggressive_motion: false # if true, a preknown gravity should be provided in following gravity_init
++            start_in_aggressive_motion: true # 必须为 true！使用预设重力方向，避免从IMU计算导致飞走
+             extrinsic_est_en: false # for aggressive motion, set this variable false
+             imu_time_inte: 0.004 # = 1 / frequency of IMU
+             satu_acc: 30.0 # the saturation value of IMU's acceleration. not related to the units
+             satu_gyro: 35.0 # the saturation value of IMU's angular velocity. not related to the units
+-            acc_norm: 9.81 # 1.0 for g as unit, 9.81 for m/s^2 as unit of the IMU's acceleration
++            acc_norm: 10.2 # 1.0 for g as unit, 9.81 for m/s^2 as unit of the IMU's acceleration
++            # 根据实际IMU读数调整（当前静止时模长约10.1-10.2 m/s²）
+             lidar_meas_cov: 0.01 # 0.001
+             acc_cov_output: 500.0
+             gyr_cov_output: 1000.0
+             b_acc_cov: 0.0001 
+             b_gyr_cov: 0.0001 
+-            imu_meas_acc_cov: 0.1 #0.1 # 2
+-            imu_meas_omg_cov: 0.1 #0.1 # 2 
++            imu_meas_acc_cov: 0.1
++            imu_meas_omg_cov: 0.1 
+             gyr_cov_input: 0.01 # for IMU as input model
+             acc_cov_input: 0.1 # for IMU as input model
+             plane_thr: 0.1 # 0.05, the threshold for plane criteria, the smaller, the flatter a plane
+@@ -38,8 +39,8 @@
+             fov_degree: 180.0
+             det_range: 100.0
+             gravity_align: true # true to align the z axis of world frame with the direction of gravity, and the gravity direction should be specified below
+-            gravity: [0.0, 0.0, -9.810] # [0.0, 9.810, 0.0] # gravity to be aligned
+-            gravity_init: [0.0, 0.0, -9.810] # [0.0, 9.810, 0.0] # # preknown gravity in the first IMU body frame, use when imu_en is false or start from a non-stationary state
++            gravity: [0.0, 0.0, -9.810] # gravity to be aligned
++            gravity_init: [0.0, 0.0, -9.810] # preknown gravity in the first IMU body frame, use when imu_en is false or start from a non-stationary state
+             
+             # transform from imu to lidar
+             extrinsic_T: [ 0.007698, 0.014655, -0.00667] # ulhk # [-0.5, 1.4, 1.5] # utbm
+@@ -58,4 +59,4 @@
+         pcd_save:
+             pcd_save_en: true       # save map to pcd file
+             interval: -1            # how many LiDAR frames saved in each pcd file; 
+-                                        # -1 : all frames will be saved in ONE pcd file, may lead to memory crash when having too much frames.
+\ No newline at end of file
++                                        # -1 : all frames will be saved in ONE pcd file, may lead to memory crash when having too much frames.
+diff --git a/launch/correct_odom_unilidar_l1.launch.py b/launch/correct_odom_unilidar_l1.launch.py
+deleted file mode 100644
+index 934d187..0000000
+--- a/launch/correct_odom_unilidar_l1.launch.py
++++ /dev/null
+@@ -1,48 +0,0 @@
+-from launch import LaunchDescription
+-from launch.actions import GroupAction, DeclareLaunchArgument
+-from launch.conditions import IfCondition
+-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+-from launch_ros.actions import Node
+-from launch_ros.substitutions import FindPackageShare
+-
+-
+-def generate_launch_description():
+-    # Node parameters, including those from the YAML configuration file
+-    laser_mapping_params = [
+-        PathJoinSubstitution([
+-            FindPackageShare('point_lio'),
+-            'config', 'unilidar_l1.yaml'
+-        ]),
+-        {
+-            'use_imu_as_input': False,  # Change to True to use IMU as input of Point-LIO
+-            'prop_at_freq_of_imu': True,
+-            'check_satu': True,
+-            'init_map_size': 10,
+-            'point_filter_num': 1,  # Options: 1, 3
+-            'space_down_sample': True,
+-            'filter_size_surf': 0.1,  # Options: 0.5, 0.3, 0.2, 0.15, 0.1
+-            'filter_size_map': 0.1,  # Options: 0.5, 0.3, 0.15, 0.1
+-            'cube_side_length': 1000.0,  # Option: 1000
+-            'runtime_pos_log_enable': False,  # Option: True
+-            'odom_only': True, # Option: False
+-            'odom_header_frame_id': "odom",     # Default: "camera_init"
+-            'odom_child_frame_id': "base_link", # Default: "aft_mapped"
+-        }
+-    ]
+-
+-    # Node definition for laserMapping with Point-LIO
+-    laser_mapping_node = Node(
+-        package='point_lio',
+-        executable='pointlio_mapping',
+-        name='laserMapping',
+-        output='screen',
+-        parameters=laser_mapping_params,
+-        # prefix='gdb -ex run --args'
+-    )
+-
+-    # Assemble the launch description
+-    ld = LaunchDescription([
+-        laser_mapping_node,
+-    ])
+-
+-    return ld
+diff --git a/launch/mapping_mid360.launch.py b/launch/mapping_mid360.launch.py
+index dbf6ee4..25fd35c 100644
+--- a/launch/mapping_mid360.launch.py
++++ b/launch/mapping_mid360.launch.py
+@@ -19,7 +19,7 @@ def generate_launch_description():
+             'config', 'mid360.yaml'
+         ]),
+         {
+-            'use_imu_as_input': False,  # Change to True to use IMU as input of Point-LIO
++            'use_imu_as_input': True,  # Change to True to use IMU as input of Point-LIO
+             'prop_at_freq_of_imu': True,
+             'check_satu': True,
+             'init_map_size': 10,
+diff --git a/launch/mapping_unilidar_l2.launch.py b/launch/mapping_unilidar_l2.launch.py
+index d3d966e..bcb36fa 100644
+--- a/launch/mapping_unilidar_l2.launch.py
++++ b/launch/mapping_unilidar_l2.launch.py
+@@ -19,14 +19,14 @@ def generate_launch_description():
+             'config', 'unilidar_l2.yaml'
+         ]),
+         {
+-            'use_imu_as_input': False,  # Change to True to use IMU as input of Point-LIO
++            'use_imu_as_input': True,  # Change to True to use IMU as input of Point-LIO
+             'prop_at_freq_of_imu': True,
+             'check_satu': True,
+             'init_map_size': 10,
+-            'point_filter_num': 1,  # Options: 1, 3
++            'point_filter_num': 3,  # Options: 1, 3
+             'space_down_sample': True,
+-            'filter_size_surf': 0.1,  # Options: 0.5, 0.3, 0.2, 0.15, 0.1
+-            'filter_size_map': 0.1,  # Options: 0.5, 0.3, 0.15, 0.1
++            'filter_size_surf': 0.5,  # Options: 0.5, 0.3, 0.2, 0.15, 0.1
++            'filter_size_map': 0.5,  # Options: 0.5, 0.3, 0.15, 0.1
+             'cube_side_length': 1000.0,  # Option: 1000
+             'runtime_pos_log_enable': False,  # Option: True
+         }
+diff --git a/package.xml b/package.xml
+index 01ba0ff..ebf2214 100644
+--- a/package.xml
++++ b/package.xml
+@@ -28,7 +28,7 @@
+   <depend>pcl_ros</depend> <!-- For PCL support -->
+   <depend>pcl_conversions</depend> <!-- For PCL support -->
+   <depend>visualization_msgs</depend> <!-- For visualization_msgs support -->
+-  <!-- <depend>livox_ros_driver2</depend> -->
++  <depend>livox_ros_driver2</depend>
+ 
+   <!-- test_depend remains the same, but make sure the testing tools you use are compatible with ROS2 -->
+   <test_depend>ament_lint_auto</test_depend>
+diff --git a/rviz_cfg/loam_livox.rviz b/rviz_cfg/loam_livox.rviz
+index b6f0986..d517b3a 100644
+--- a/rviz_cfg/loam_livox.rviz
++++ b/rviz_cfg/loam_livox.rviz
+@@ -40,25 +40,37 @@ Visualization Manager:
+           Value: true
+         base_link:
+           Value: true
++        base_scan:
++          Value: true
++        camera_depth_frame:
++          Value: true
++        camera_depth_optical_frame:
++          Value: true
+         camera_init:
+           Value: true
+         camera_link:
+           Value: true
+-        gyro_link:
++        camera_rgb_frame:
++          Value: true
++        camera_rgb_optical_frame:
++          Value: true
++        caster_back_left_link:
++          Value: true
++        caster_back_right_link:
+           Value: true
+-        laser:
++        imu_link:
+           Value: true
+-        left_front_link:
++        odom:
+           Value: true
+-        left_wheel_link:
++        unilidar_imu:
+           Value: true
+-        map:
++        unilidar_imu_initial:
+           Value: true
+-        odom_combined:
++        unilidar_lidar:
+           Value: true
+-        right_front_link:
++        wheel_left_link:
+           Value: true
+-        right_wheel_link:
++        wheel_right_link:
+           Value: true
+       Marker Scale: 1
+       Name: TF
+@@ -141,8 +153,8 @@ Visualization Manager:
+     - Alpha: 1
+       Autocompute Intensity Bounds: true
+       Autocompute Value Bounds:
+-        Max Value: 1.8584054708480835
+-        Min Value: -0.10289539396762848
++        Max Value: 2.4390182495117188
++        Min Value: -0.8958243131637573
+         Value: true
+       Axis: Z
+       Channel Name: intensity
+@@ -209,8 +221,8 @@ Visualization Manager:
+     - Alpha: 1
+       Autocompute Intensity Bounds: true
+       Autocompute Value Bounds:
+-        Max Value: 2.036320447921753
+-        Min Value: -0.09378375858068466
++        Max Value: 2.5029540061950684
++        Min Value: -0.02469649910926819
+         Value: true
+       Axis: Z
+       Channel Name: intensity
+@@ -286,7 +298,7 @@ Visualization Manager:
+   Views:
+     Current:
+       Class: rviz_default_plugins/Orbit
+-      Distance: 28.403661727905273
++      Distance: 15.301136016845703
+       Enable Stereo Rendering:
+         Stereo Eye Separation: 0.05999999865889549
+         Stereo Focal Distance: 1
+@@ -301,10 +313,10 @@ Visualization Manager:
+       Invert Z Axis: false
+       Name: Current View
+       Near Clip Distance: 0.009999999776482582
+-      Pitch: 0.7497965693473816
++      Pitch: 0.2897973954677582
+       Target Frame: <Fixed Frame>
+       Value: Orbit (rviz_default_plugins)
+-      Yaw: 1.7503817081451416
++      Yaw: 2.3803837299346924
+     Saved: ~
+ Window Geometry:
+   Displays:
+@@ -312,7 +324,7 @@ Window Geometry:
+   Height: 846
+   Hide Left Dock: false
+   Hide Right Dock: false
+-  QMainWindow State: 000000ff00000000fd000000040000000000000156000002b0fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d000002b0000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f000002b0fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d000002b0000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000005ad0000003efc0100000002fb0000000800540069006d00650100000000000005ad000002eb00fffffffb0000000800540069006d0065010000000000000450000000000000000000000451000002b000000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
++  QMainWindow State: 000000ff00000000fd000000040000000000000156000002b0fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d000002b0000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f000002b0fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d000002b0000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000005ad0000003efc0100000002fb0000000800540069006d00650100000000000005ad000002fb00fffffffb0000000800540069006d0065010000000000000450000000000000000000000451000002b000000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+   Selection:
+     collapsed: false
+   Time:
+@@ -322,5 +334,5 @@ Window Geometry:
+   Views:
+     collapsed: false
+   Width: 1453
+-  X: 2404
+-  Y: 218
++  X: 90
++  Y: 259

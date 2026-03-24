@@ -1,0 +1,69 @@
+/**:
+    ros__parameters:
+        common:
+            lid_topic: "/unilidar/cloud" 
+            imu_topic: "/unilidar/imu" 
+            con_frame: false # true: if you need to combine several LiDAR frames into one
+            con_frame_num: 1 # the number of frames combined
+            cut_frame: true # true: if you need to cut one LiDAR frame into several subframes
+            cut_frame_time_interval: 0.1 # should be integral fraction of 1 / LiDAR frequency   
+            time_lag_imu_to_lidar: 0.0 # Time offset between LiDAR and IMU calibrated by other algorithms, e.g., LI-Init (find in Readme)
+                                        # the timesample of IMU is transferred from the current timeline to LiDAR's timeline by subtracting this value
+
+        preprocess:
+            lidar_type: 5 # 5 for Unitree Unilidar L2
+            scan_line: 18 # Unitree Unilidar L2 has 18 scan lines
+            timestamp_unit: 0 # the unit of time/t field in the PointCloud2 rostopic: 0-second, 1-milisecond, 2-microsecond, 3-nanosecond.
+            blind: 0.5 # blind spot distance in meters
+
+        mapping:
+            imu_en: true
+            start_in_aggressive_motion: true # 使用预设重力方向，避免依赖初始化时的设备姿态
+            # 设置为 true 后，系统会使用 gravity_init 而不是从 IMU 初始化时的平均加速度计算重力方向
+            # 这样可以避免设备在不同姿态下启动时出现重力方向估计错误的问题
+            extrinsic_est_en: true # 启用外参自动估计（可以自动修正 extrinsic_R 和 extrinsic_T）
+            # 注意：启用后需要监控里程计是否漂移，如果漂移严重，建议使用 LI-Init 工具精确校准后禁用
+            imu_time_inte: 0.004 # = 1 / frequency of IMU (250 Hz for Unitree Lidar L2)
+            satu_acc: 30.0 # the saturation value of IMU's acceleration. not related to the units
+            satu_gyro: 35.0 # the saturation value of IMU's angular velocity. not related to the units
+            acc_norm: 9.81 # 1.0 for g as unit, 9.81 for m/s^2 as unit of the IMU's acceleration
+            lidar_meas_cov: 0.01 # LiDAR measurement covariance
+            acc_cov_output: 500.0 # acceleration covariance for output
+            gyr_cov_output: 1000.0 # gyroscope covariance for output
+            b_acc_cov: 0.0001 # accelerometer bias covariance
+            b_gyr_cov: 0.0001 # gyroscope bias covariance
+            imu_meas_acc_cov: 0.01 # IMU acceleration measurement covariance
+            imu_meas_omg_cov: 0.01 # IMU angular velocity measurement covariance
+            gyr_cov_input: 0.01 # gyroscope covariance for input model
+            acc_cov_input: 0.1 # accelerometer covariance for input model
+            plane_thr: 0.1 # the threshold for plane criteria, the smaller, the flatter a plane
+            match_s: 81.0 # matching search size
+            fov_degree: 180.0 # field of view in degrees
+            det_range: 30.0 # detection range in meters
+            gravity_align: true # true to align the z axis of world frame with the direction of gravity
+            gravity: [0.0, 0.0, -9.810] # gravity to be aligned (standard gravity vector)
+            gravity_init: [0.0, 0.0, -9.810] # preknown gravity in the first IMU body frame, use when imu_en is false or start from a non-stationary state
+            
+            # transform from imu to lidar (extrinsic parameters)
+            # 注意：如果点云旋转，可能需要校准 extrinsic_R
+            # 当前使用之前可能校准过的 extrinsic_T 值
+            extrinsic_T: [0.007698, 0.014655, -0.00667] # translation from IMU to LiDAR [x, y, z] in meters
+            extrinsic_R: [1.0, 0.0, 0.0,  # rotation matrix from IMU to LiDAR (可能需要校准)
+                          0.0, 1.0, 0.0,
+                          0.0, 0.0, 1.0]
+            # 如果点云仍然旋转，可能需要：
+            # 1. 使用 LI-Init 工具校准 extrinsic_R
+            # 2. 或者手动测量 IMU 和 LiDAR 的相对安装角度并计算旋转矩阵
+
+        odometry: 
+            publish_odometry_without_downsample: false # set to true for high-frequency odometry output
+
+        publish:
+            path_en: true                 # false: close the path output
+            scan_publish_en: true         # false: close all the point cloud output
+            scan_bodyframe_pub_en: false  # true: output the point cloud scans in IMU-body-frame
+
+        pcd_save:
+            pcd_save_en: false       # save map to pcd file
+            interval: -1            # how many LiDAR frames saved in each pcd file; 
+                                    # -1 : all frames will be saved in ONE pcd file, may lead to memory crash when having too much frames.

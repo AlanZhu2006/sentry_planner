@@ -1,0 +1,111 @@
+nav_ws backup created on 2026-03-25 02:41:37 CST
+
+[nav_ws top-level status]
+## main...origin/main
+ M README_LIDAR.md
+ M "mid360 command.txt"
+ M mid360_command.txt
+ M my_nav2_params.yaml
+ m src/FAST_LIO
+ M src/livox_dual_merge/launch/dual_lidar_merge_launch.py
+ M src/livox_dual_merge/livox_dual_merge/merge_node.py
+ m src/livox_ros_driver2
+ m src/pb_rm_simulation
+ m src/pcd2pgm
+ m src/point_lio_ros2
+ m src/unilidar_sdk2
+ M start_robot.sh
+ M test_dual_lidar.sh
+?? configs/unitree_l2_complete/dual_unilidar_drivers.launch.py
+?? diagnose_dual_lidar_network.sh
+?? docs/
+?? lidar_type
+
+[repo] /home/nyu/nav_ws/src/FAST_LIO
+## ros2...origin/ros2
+ M config/mid360.yaml
+ M src/laserMapping.cpp
+?? PCD/rotate_pcd.py
+?? config/mid360_dual.yaml
+?? config/mid360_single.yaml
+
+[repo] /home/nyu/nav_ws/src/livox_ros_driver2
+## master...origin/master
+ M CMakeLists.txt
+ M config/MID360_config.json
+ M launch_ROS2/msg_MID360_launch.py
+ D package_ROS2.xml
+?? CMakeLists.txt.save
+?? config/MID360_dual_182_3.json
+?? config/MID360_dual_config.json
+?? config/MID360_dual_config_swap.json
+?? config/MID360_single_182.json
+?? config/MID360_usb_config.json
+?? config/install/
+?? config/log/
+?? launch_ROS2/msg_MID360_dual_launch.py
+?? launch_ROS2/msg_MID360_dual_swap_launch.py
+?? launch_ROS2/msg_MID360_usb_launch.py
+
+[repo] /home/nyu/nav_ws/src/pb_rm_simulation
+## main...origin/main
+ M src/rm_localization/icp_registration/include/icp_registration/icp_registration.hpp
+ M src/rm_localization/icp_registration/src/icp_registration.cpp
+ M src/rm_nav_bringup/config/simulation/pointlio_mid360_sim.yaml
+ M src/rm_nav_bringup/urdf/sentry_robot_sim.xacro
+ M src/rm_navigation/fake_vel_transform/include/fake_vel_transform/fake_vel_transform.hpp
+ M src/rm_navigation/fake_vel_transform/launch/fake_vel_transform.launch.py
+ M src/rm_navigation/fake_vel_transform/src/fake_vel_transform.cpp
+
+[repo] /home/nyu/nav_ws/src/pcd2pgm
+## main...origin/main
+ M config/pcd2pgm.yaml
+ M launch/pcd2pgm_launch.py
+?? config/pcd2pgm.yaml.backup
+?? config/pcd2pgm.yaml.backup_before_angle_adjust
+
+[repo] /home/nyu/nav_ws/src/point_lio_ros2
+## main...origin/main
+ M CMakeLists.txt
+ D Log/guide.md
+ D Log/imu.txt
+ D Log/plot.py
+ D Log/plot_imu.py
+ D Log/plot_out.py
+ M config/mid360.yaml
+ M config/unilidar_l2.yaml
+ D launch/correct_odom_unilidar_l1.launch.py
+ M launch/mapping_mid360.launch.py
+ M launch/mapping_unilidar_l2.launch.py
+ M package.xml
+ M rviz_cfg/loam_livox.rviz
+?? PCD/build/
+?? PCD/install/
+?? PCD/log/
+?? config/unilidar_l2.yaml.backup_20260113_214749
+?? config/unilidar_l2.yaml.backup_20260113_225701
+?? config/unilidar_l2.yaml.backup_before_restore_20260114_003140
+?? config/unilidar_l2.yaml.backup_before_tilt_fix_1768365690
+?? config/unilidar_l2.yaml.backup_extrinsic_R_20260113_224602
+?? config/unilidar_l2.yaml.backup_extrinsic_R_20260114_002748
+?? config/unilidar_l2.yaml.backup_filter
+?? config/unilidar_l2_clean.yaml
+?? config/unilidar_l2_no_imu.yaml
+?? launch/mapping_unilidar_l2_clean.launch.py
+
+[repo] /home/nyu/nav_ws/src/unilidar_sdk2
+## main...origin/main
+ D unitree_lidar_ros/.catkin_workspace
+ D unitree_lidar_ros/src/unitree_lidar_ros/CMakeLists.txt
+ D unitree_lidar_ros/src/unitree_lidar_ros/README.md
+ D unitree_lidar_ros/src/unitree_lidar_ros/config/config.yaml
+ D unitree_lidar_ros/src/unitree_lidar_ros/include/unitree_lidar_ros.h
+ D unitree_lidar_ros/src/unitree_lidar_ros/launch/run.launch
+ D unitree_lidar_ros/src/unitree_lidar_ros/launch/run_without_rviz.launch
+ D unitree_lidar_ros/src/unitree_lidar_ros/package.xml
+ D unitree_lidar_ros/src/unitree_lidar_ros/rviz/view.rviz
+ D unitree_lidar_ros/src/unitree_lidar_ros/src/unitree_lidar_ros_node.cpp
+ M unitree_lidar_ros2/src/unitree_lidar_ros2/launch/launch.py
+?? unitree_lidar_sdk/bin/
+?? unitree_lidar_sdk/build/
+
