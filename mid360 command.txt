@@ -36,6 +36,12 @@ python3 /home/nyu/Codespace/nyush-rm-vision/serial_sender.py \
   --robot-control-topic /robot_control
 
 source /opt/ros/humble/setup.zsh
+source /home/nyu/sentry_planner/rm_decision_ws/install/setup.zsh
+ros2 topic pub -r 20 /robot_control rm_decision_interfaces/msg/RobotControl \
+"{stop_gimbal_scan: true, chassis_spin_vel: 0.0, scan_enabled: true, allow_vision_control: true, search_when_target_lost: true, scan_yaw_rate_deg_s: 120.0, search_pitch_deg: -6.0}"
+
+
+source /opt/ros/humble/setup.zsh
 source /home/nyu/sentry_planner/install/setup.zsh
 ros2 topic pub -r 10 /robot_control rm_decision_interfaces/msg/RobotControl \
 "{stop_gimbal_scan: true, chassis_spin_vel: 0.0, scan_enabled: false, allow_vision_control: false, search_when_target_lost: false, scan_yaw_rate_deg_s: 0.0, search_pitch_deg: 0.0}"

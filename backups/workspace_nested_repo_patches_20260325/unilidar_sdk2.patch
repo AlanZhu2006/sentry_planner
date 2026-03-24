@@ -1,0 +1,725 @@
+diff --git a/unitree_lidar_ros/.catkin_workspace b/unitree_lidar_ros/.catkin_workspace
+deleted file mode 100644
+index 52fd97e..0000000
+--- a/unitree_lidar_ros/.catkin_workspace
++++ /dev/null
+@@ -1 +0,0 @@
+-# This file currently only serves to mark the location of a catkin workspace for tool integration
+diff --git a/unitree_lidar_ros/src/unitree_lidar_ros/CMakeLists.txt b/unitree_lidar_ros/src/unitree_lidar_ros/CMakeLists.txt
+deleted file mode 100755
+index 979e81a..0000000
+--- a/unitree_lidar_ros/src/unitree_lidar_ros/CMakeLists.txt
++++ /dev/null
+@@ -1,62 +0,0 @@
+-cmake_minimum_required(VERSION 2.8.3)
+-project(unitree_lidar_ros)
+-
+-set(CMAKE_BUILD_TYPE "Release")
+-set(CMAKE_CXX_FLAGS "-std=c++17")
+-set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g2 -ggdb -llz4")
+-set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall -DNDEBUG -llz4") 
+-
+-find_package(PCL REQUIRED QUIET)
+-
+-find_package(catkin REQUIRED COMPONENTS
+-  tf
+-  roscpp
+-  rospy
+-  rosparam
+-  pcl_conversions
+-  std_msgs
+-  sensor_msgs
+-  geometry_msgs
+-  nav_msgs
+-  message_generation
+-  visualization_msgs
+-  roslib
+-)
+-
+-catkin_package(
+-  INCLUDE_DIRS include
+-  DEPENDS PCL
+-
+-  CATKIN_DEPENDS
+-  rosparam
+-  std_msgs
+-  nav_msgs
+-  geometry_msgs
+-  sensor_msgs
+-  message_runtime
+-  message_generation
+-  visualization_msgs
+-)
+-
+-include_directories(
+-	include
+-	${catkin_INCLUDE_DIRS}
+-	${PCL_INCLUDE_DIRS}
+-
+-  ../../../unitree_lidar_sdk/include
+-)
+-
+-link_directories(
+-  lib
+-  ${PCL_LIBRARY_DIRS}
+-  ../../../unitree_lidar_sdk/lib/${CMAKE_SYSTEM_PROCESSOR}
+-)
+-
+-set(EXTRA_LIBS 
+-  ${catkin_LIBRARIES} 
+-  ${PCL_LIBRARIES} 
+-  libunilidar_sdk2.a
+-)
+-
+-add_executable(unitree_lidar_ros_node src/unitree_lidar_ros_node.cpp)
+-target_link_libraries(unitree_lidar_ros_node ${EXTRA_LIBS})
+\ No newline at end of file
+diff --git a/unitree_lidar_ros/src/unitree_lidar_ros/README.md b/unitree_lidar_ros/src/unitree_lidar_ros/README.md
+deleted file mode 100644
+index 44e5736..0000000
+--- a/unitree_lidar_ros/src/unitree_lidar_ros/README.md
++++ /dev/null
+@@ -1 +0,0 @@
+-This is a ROS package for Unitree Lidar L2.
+\ No newline at end of file
+diff --git a/unitree_lidar_ros/src/unitree_lidar_ros/config/config.yaml b/unitree_lidar_ros/src/unitree_lidar_ros/config/config.yaml
+deleted file mode 100755
+index e344329..0000000
+--- a/unitree_lidar_ros/src/unitree_lidar_ros/config/config.yaml
++++ /dev/null
+@@ -1,34 +0,0 @@
+-####################################################
+-# lidar sdk configuration
+-####################################################
+-
+-# Configuration
+-initialize_type: 2 # 1-Serial, 2-UDP
+-work_mode: 0
+-use_system_timestamp: true
+-range_min: 0
+-range_max: 100
+-cloud_scan_num: 18
+-
+-# Serial Port
+-serial_port: "/dev/ttyACM0"
+-baudrate: 4000000
+-
+-# UDP Port
+-lidar_port: 6101
+-lidar_ip: "192.168.1.62"
+-pc_port: 6201
+-pc_ip: "192.168.1.2"
+-
+-# PointCloud
+-cloud_frame: "unilidar_lidar"  # default: "unilidar_lidar"
+-cloud_topic: "unilidar/cloud"  # default: "unilidar/cloud"
+-
+-
+-# IMU
+-imu_frame: "unilidar_imu"      # default: "unilidar_imu" 
+-imu_topic: "unilidar/imu"      # default: "unilidar/imu"
+-
+-# 2d Laser Scan
+-laserscan_frame: "unilidar_laserscan"  # default: "unilidar_laserscan
+-laserscan_topic: "unilidar/laserscan"
+\ No newline at end of file
+diff --git a/unitree_lidar_ros/src/unitree_lidar_ros/include/unitree_lidar_ros.h b/unitree_lidar_ros/src/unitree_lidar_ros/include/unitree_lidar_ros.h
+deleted file mode 100644
+index b054316..0000000
+--- a/unitree_lidar_ros/src/unitree_lidar_ros/include/unitree_lidar_ros.h
++++ /dev/null
+@@ -1,272 +0,0 @@
+-/**********************************************************************
+- Copyright (c) 2020-2024, Unitree Robotics.Co.Ltd. All rights reserved.
+-***********************************************************************/
+-
+-#pragma once
+-
+-// ROS
+-#include <ros/ros.h>
+-#include <ros/package.h>
+-#include <std_msgs/Header.h>
+-#include <std_msgs/Float64MultiArray.h>
+-#include <std_msgs/Float32MultiArray.h>
+-#include <sensor_msgs/Imu.h>
+-#include <sensor_msgs/PointCloud2.h>
+-#include <sensor_msgs/NavSatFix.h>
+-#include <sensor_msgs/LaserScan.h>
+-#include <nav_msgs/Odometry.h>
+-#include <nav_msgs/Path.h>
+-#include <visualization_msgs/Marker.h>
+-#include <visualization_msgs/MarkerArray.h>
+-#include <tf/LinearMath/Quaternion.h>
+-#include <tf/transform_listener.h>
+-#include <tf/transform_datatypes.h>
+-#include <tf/transform_broadcaster.h>
+-
+-// PCL
+-#include <pcl_conversions/pcl_conversions.h>
+-
+-// Eigen
+-#include <Eigen/Core>
+-#include <Eigen/Geometry>
+-
+-// SDK
+-#include "unitree_lidar_sdk_pcl.h"
+-
+-/**
+- * @brief Publish a pointcloud
+- *
+- * @param thisPub
+- * @param thisCloud
+- * @param thisStamp
+- * @param thisFrame
+- * @return sensor_msgs::PointCloud2
+- */
+-inline sensor_msgs::PointCloud2 publishCloud(
+-    ros::Publisher *thisPub,
+-    pcl::PointCloud<PointType>::Ptr thisCloud,
+-    ros::Time thisStamp,
+-    std::string thisFrame)
+-{
+-    sensor_msgs::PointCloud2 tempCloud;
+-    pcl::toROSMsg(*thisCloud, tempCloud);
+-    tempCloud.header.stamp = thisStamp;
+-    tempCloud.header.frame_id = thisFrame;
+-    if (thisPub->getNumSubscribers() != 0)
+-        thisPub->publish(tempCloud);
+-    return tempCloud;
+-}
+-
+-/**
+- * @brief Unitree Lidar SDK Node
+- */
+-class UnitreeLidarRosNode
+-{
+-protected:
+-    // ROS
+-    ros::NodeHandle nh_;
+-    ros::Publisher pub_pointcloud_raw_;
+-    ros::Publisher pub_imu_;
+-    tf::TransformBroadcaster tfbc1_;
+-    ros::Publisher pub_laser_scan_;
+-
+-    // Unitree Lidar Reader
+-    UnitreeLidarReader *lsdk_;
+-
+-    // Config params
+-    std::string serial_port;
+-    int baudrate_;
+-
+-    std::string cloud_frame_;
+-    std::string cloud_topic_;
+-    int cloud_scan_num_;
+-
+-    std::string imu_frame_;
+-    std::string imu_topic_;
+-
+-    std::string laserscan_frame_;
+-    std::string laserscan_topic_;
+-
+-    int initialize_type_;
+-
+-    int local_port_;
+-    std::string local_ip_;
+-    int lidar_port_;
+-    std::string lidar_ip_;
+-
+-    int work_mode_;
+-
+-    double range_min_;
+-    double range_max_;
+-    bool use_system_timestamp_;
+-
+-public:
+-    UnitreeLidarRosNode(ros::NodeHandle nh)
+-    {
+-
+-        // Load config parameters
+-        nh.param("/unitree_lidar_ros_node/initialize_type", initialize_type_, 1);
+-        nh.param("/unitree_lidar_ros_node/work_mode", work_mode_, 0);
+-        nh.param("/unitree_lidar_ros_node/range_min", range_min_, 0.0);
+-        nh.param("/unitree_lidar_ros_node/range_max", range_max_, 100.0);
+-        nh.param("/unitree_lidar_ros_node/use_system_timestamp", use_system_timestamp_, true);
+-
+-        nh.param("/unitree_lidar_ros_node/serial_port", serial_port, std::string("/dev/ttyACM0"));
+-        nh.param("/unitree_lidar_ros_node/baudrate", baudrate_, 4000000);
+-
+-        nh.param("/unitree_lidar_ros_node/lidar_port", lidar_port_, 6101);
+-        nh.param("/unitree_lidar_ros_node/lidar_ip", lidar_ip_, std::string("10.10.10.10"));
+-        nh.param("/unitree_lidar_ros_node/pc_port", local_port_, 6201);
+-        nh.param("/unitree_lidar_ros_node/pc_ip", local_ip_, std::string("10.10.10.100"));
+-
+-        nh.param("/unitree_lidar_ros_node/cloud_frame", cloud_frame_, std::string("unilidar_lidar"));
+-        nh.param("/unitree_lidar_ros_node/cloud_topic", cloud_topic_, std::string("unilidar/cloud"));
+-        nh.param("/unitree_lidar_ros_node/cloud_scan_num", cloud_scan_num_, 18);
+-
+-        nh.param("/unitree_lidar_ros_node/imu_frame", imu_frame_, std::string("unilidar_imu"));
+-        nh.param("/unitree_lidar_ros_node/imu_topic", imu_topic_, std::string("unilidar/imu"));
+-
+-        nh.param("/unitree_lidar_ros_node/laserscan_frame", laserscan_frame_, std::string("unilidar_lidar"));
+-        nh.param("/unitree_lidar_ros_node/laserscan_topic", laserscan_topic_, std::string("unilidar/laserscan"));
+-
+-        // Initialize UnitreeLidarReader
+-        lsdk_ = createUnitreeLidarReader();
+-
+-        std::cout << "initialize_type_ = " << initialize_type_ << std::endl;
+-        std::cout << "work_mode_ = " << work_mode_ << std::endl;
+-
+-        if (initialize_type_ == 1)
+-        {
+-            lsdk_->initializeSerial(serial_port, baudrate_, 
+-                cloud_scan_num_, use_system_timestamp_, range_min_, range_max_);
+-        }
+-        else if (initialize_type_ == 2)
+-        {
+-            lsdk_->initializeUDP(lidar_port_, lidar_ip_, local_port_, local_ip_, 
+-                cloud_scan_num_, use_system_timestamp_, range_min_, range_max_);
+-        }else{
+-            std::cout << "initialize_type is not right! exit now ...\n";
+-            exit(0);
+-        }
+-
+-        lsdk_->setLidarWorkMode(work_mode_);
+-
+-        // ROS
+-        nh_ = nh;
+-        pub_pointcloud_raw_ = nh.advertise<sensor_msgs::PointCloud2>(cloud_topic_, 100);
+-        pub_imu_ = nh.advertise<sensor_msgs::Imu>(imu_topic_, 1000);
+-        pub_laser_scan_ = nh.advertise<sensor_msgs::LaserScan>(laserscan_topic_, 100);
+-    }
+-
+-    ~UnitreeLidarRosNode()
+-    {
+-    }
+-
+-    /**
+-     * @brief Run once
+-     */
+-    bool run()
+-    {
+-        int result = lsdk_->runParse();
+-        pcl::PointCloud<PointType>::Ptr cloudOut(new pcl::PointCloud<PointType>());
+-        if (result == LIDAR_IMU_DATA_PACKET_TYPE)
+-        {
+-            LidarImuData imu;
+-            if (lsdk_->getImuData(imu))
+-            {
+-                // publish imu message
+-                sensor_msgs::Imu imuMsg;
+-                imuMsg.header.frame_id = imu_frame_;
+-                imuMsg.header.stamp = ros::Time::now();
+-
+-                imuMsg.orientation.w = imu.quaternion[0];
+-                imuMsg.orientation.x = imu.quaternion[1];
+-                imuMsg.orientation.y = imu.quaternion[2];
+-                imuMsg.orientation.z = imu.quaternion[3];
+-
+-                imuMsg.angular_velocity.x = imu.angular_velocity[0];
+-                imuMsg.angular_velocity.y = imu.angular_velocity[1];
+-                imuMsg.angular_velocity.z = imu.angular_velocity[2];
+-
+-                imuMsg.linear_acceleration.x = imu.linear_acceleration[0];
+-                imuMsg.linear_acceleration.y = imu.linear_acceleration[1];
+-                imuMsg.linear_acceleration.z = imu.linear_acceleration[2];
+-
+-                pub_imu_.publish(imuMsg);
+-
+-                // publish tf from initial imu to real-time imu
+-                tf::Transform transform;
+-                transform.setOrigin(tf::Vector3(0, 0, 0));
+-                transform.setRotation(tf::Quaternion(imu.quaternion[1], imu.quaternion[2],
+-                                                     imu.quaternion[3], imu.quaternion[0]));
+-                tfbc1_.sendTransform(tf::StampedTransform(transform, ros::Time::now(), imu_frame_ + "_initial", imu_frame_));
+-
+-                // publish tf from imu to lidar
+-                transform.setOrigin(tf::Vector3(0.007698, 0.014655, -0.00667));
+-                transform.setRotation(tf::Quaternion(0, 0, 0, 1));
+-                tfbc1_.sendTransform(tf::StampedTransform(transform, ros::Time::now(), imu_frame_, cloud_frame_));
+-
+-            }
+-            return true;
+-        }
+-        else if (result == LIDAR_POINT_DATA_PACKET_TYPE)
+-        {
+-            // std::cout << "LIDAR_POINT_DATA_PACKET_TYPE" << std::endl;
+-            PointCloudUnitree cloud;
+-            if (lsdk_->getPointCloud(cloud))
+-            {
+-                transformUnitreeCloudToPCL(cloud, cloudOut);
+-                publishCloud(&pub_pointcloud_raw_, cloudOut, ros::Time::now().fromSec(cloud.stamp), cloud_frame_);
+-            }
+-
+-            return true;
+-        }
+-        else if (result == LIDAR_2D_POINT_DATA_PACKET_TYPE)
+-        {
+-            // std::cout << "LIDAR_2D_POINT_DATA_PACKET_TYPE" << std::endl;
+-            Lidar2DPointDataPacket packet = lsdk_->getLidar2DPointDataPacket();
+-            Lidar2DPointData &data = packet.data;
+-
+-            sensor_msgs::LaserScan scan;
+-            scan.header.stamp = ros::Time::now();
+-            scan.header.frame_id = laserscan_frame_;
+-            scan.angle_min = data.angle_min;
+-            scan.angle_max = data.angle_min + data.angle_increment * data.point_num;
+-            scan.angle_increment = data.angle_increment;
+-            scan.time_increment = data.time_increment;
+-            scan.range_min = 0.0;
+-            scan.range_max = 100.0;
+-            scan.ranges.resize(data.point_num);
+-            scan.intensities.resize(data.point_num);
+-
+-            // std::cout << "data.point_num = " << data.point_num 
+-            //         << ", data.angle_min = " << data.angle_min
+-            //         << ", scan.angle_max = " << scan.angle_max
+-            //         << ", data.angle_increment = " << data.angle_increment
+-            //         << ", data.time_increment = " << data.time_increment
+-            //         << ", data.range_min = " << data.range_min
+-            //         << ", data.range_max = " << data.range_max
+-            //         << std::endl;
+-            
+-            int countValid = 0;
+-            for (unsigned int i = 0; i < data.point_num; ++i)
+-            {
+-                scan.ranges[i] = data.ranges[i] * data.param.range_scale;
+-                scan.intensities[i] = data.intensities[i];
+-
+-                if (scan.ranges[i] > scan.range_min && scan.ranges[i] < scan.range_max)
+-                {
+-                    countValid++;
+-                }
+-            }
+-
+-            pub_laser_scan_.publish(scan);
+-
+-            return true;
+-        }
+-        else
+-        {
+-            return false;
+-        }
+-    }
+-};
+\ No newline at end of file
+diff --git a/unitree_lidar_ros/src/unitree_lidar_ros/launch/run.launch b/unitree_lidar_ros/src/unitree_lidar_ros/launch/run.launch
+deleted file mode 100755
+index 0bc0ed8..0000000
+--- a/unitree_lidar_ros/src/unitree_lidar_ros/launch/run.launch
++++ /dev/null
+@@ -1,9 +0,0 @@
+-<launch>
+-
+-  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find unitree_lidar_ros)/rviz/view.rviz" />
+-
+-  <node pkg="unitree_lidar_ros" type="unitree_lidar_ros_node"  name="unitree_lidar_ros_node" respawn="true" output="screen">
+-    <rosparam command="load" file="$(find unitree_lidar_ros)/config/config.yaml"/>
+-  </node>
+-
+-</launch>
+diff --git a/unitree_lidar_ros/src/unitree_lidar_ros/launch/run_without_rviz.launch b/unitree_lidar_ros/src/unitree_lidar_ros/launch/run_without_rviz.launch
+deleted file mode 100755
+index d3be6f1..0000000
+--- a/unitree_lidar_ros/src/unitree_lidar_ros/launch/run_without_rviz.launch
++++ /dev/null
+@@ -1,10 +0,0 @@
+-<launch>
+-
+-  <!-- <node pkg="rviz" type="rviz" name="rviz" args="-d $(find unitree_lidar_ros)/rviz/view.rviz" /> -->
+-
+-  <node pkg="unitree_lidar_ros" type="unitree_lidar_ros_node"  name="unitree_lidar_ros_node" respawn="true">
+-    <rosparam command="load" file="$(find unitree_lidar_ros)/config/config.yaml"/>
+-
+-  </node>
+-
+-</launch>
+diff --git a/unitree_lidar_ros/src/unitree_lidar_ros/package.xml b/unitree_lidar_ros/src/unitree_lidar_ros/package.xml
+deleted file mode 100755
+index a5e90d3..0000000
+--- a/unitree_lidar_ros/src/unitree_lidar_ros/package.xml
++++ /dev/null
+@@ -1,44 +0,0 @@
+-<?xml version="1.0"?>
+-<package>
+-  <name>unitree_lidar_ros</name>
+-  <version>1.0.0</version>
+-  <description>Unitree Lidar SDK for ROS</description>
+-
+-  <maintainer email="lukelbmeng@gmail.com"> Luke Meng</maintainer>
+-
+-  <license>TODO</license>
+-
+-  <author>Luke Meng</author>
+-
+-  <buildtool_depend>catkin</buildtool_depend>
+-
+-  <build_depend>roscpp</build_depend>
+-  <run_depend>roscpp</run_depend>
+-  <build_depend>rospy</build_depend>
+-  <run_depend>rospy</run_depend>
+-  <build_depend>rosparam</build_depend>
+-  <run_depend>rosparam</run_depend>
+-
+-  <build_depend>tf</build_depend>
+-  <run_depend>tf</run_depend>
+-
+-  <build_depend>pcl_conversions</build_depend>
+-  <run_depend>pcl_conversions</run_depend>
+-
+-  <build_depend>std_msgs</build_depend>
+-  <run_depend>std_msgs</run_depend>
+-  <build_depend>sensor_msgs</build_depend>
+-  <run_depend>sensor_msgs</run_depend>
+-  <build_depend>geometry_msgs</build_depend>
+-  <run_depend>geometry_msgs</run_depend>
+-  <build_depend>nav_msgs</build_depend>
+-  <run_depend>nav_msgs</run_depend>
+-  <build_depend>visualization_msgs</build_depend>
+-  <run_depend>visualization_msgs</run_depend>
+-
+-  <build_depend>message_generation</build_depend>
+-  <run_depend>message_generation</run_depend>
+-  <build_depend>message_runtime</build_depend>
+-  <run_depend>message_runtime</run_depend>
+-
+-</package>
+diff --git a/unitree_lidar_ros/src/unitree_lidar_ros/rviz/view.rviz b/unitree_lidar_ros/src/unitree_lidar_ros/rviz/view.rviz
+deleted file mode 100755
+index b6e3ae5..0000000
+--- a/unitree_lidar_ros/src/unitree_lidar_ros/rviz/view.rviz
++++ /dev/null
+@@ -1,175 +0,0 @@
+-Panels:
+-  - Class: rviz/Displays
+-    Help Height: 78
+-    Name: Displays
+-    Property Tree Widget:
+-      Expanded:
+-        - /Global Options1
+-        - /Status1
+-        - /TF1/Frames1
+-        - /PointCloud21/Autocompute Value Bounds1
+-      Splitter Ratio: 0.4941176474094391
+-    Tree Height: 607
+-  - Class: rviz/Selection
+-    Name: Selection
+-  - Class: rviz/Tool Properties
+-    Expanded:
+-      - /2D Pose Estimate1
+-      - /2D Nav Goal1
+-      - /Publish Point1
+-    Name: Tool Properties
+-    Splitter Ratio: 0.5886790156364441
+-  - Class: rviz/Views
+-    Expanded:
+-      - /Current View1
+-    Name: Views
+-    Splitter Ratio: 0.5
+-  - Class: rviz/Time
+-    Name: Time
+-    SyncMode: 0
+-    SyncSource: PointCloud2
+-Preferences:
+-  PromptSaveOnExit: true
+-Toolbars:
+-  toolButtonStyle: 2
+-Visualization Manager:
+-  Class: ""
+-  Displays:
+-    - Alpha: 0.5
+-      Cell Size: 1
+-      Class: rviz/Grid
+-      Color: 160; 160; 164
+-      Enabled: true
+-      Line Style:
+-        Line Width: 0.029999999329447746
+-        Value: Lines
+-      Name: Grid
+-      Normal Cell Count: 0
+-      Offset:
+-        X: 0
+-        Y: 0
+-        Z: 0
+-      Plane: XY
+-      Plane Cell Count: 50
+-      Reference Frame: <Fixed Frame>
+-      Value: true
+-    - Class: rviz/TF
+-      Enabled: true
+-      Filter (blacklist): ""
+-      Filter (whitelist): ""
+-      Frame Timeout: 15
+-      Frames:
+-        All Enabled: true
+-        unilidar_imu:
+-          Value: true
+-        unilidar_imu_initial:
+-          Value: true
+-        unilidar_lidar:
+-          Value: true
+-      Marker Alpha: 1
+-      Marker Scale: 5
+-      Name: TF
+-      Show Arrows: true
+-      Show Axes: true
+-      Show Names: true
+-      Tree:
+-        unilidar_imu_initial:
+-          unilidar_imu:
+-            unilidar_lidar:
+-              {}
+-      Update Interval: 0
+-      Value: true
+-    - Alpha: 0.699999988079071
+-      Autocompute Intensity Bounds: true
+-      Autocompute Value Bounds:
+-        Max Value: 3.5301876068115234
+-        Min Value: 0
+-        Value: true
+-      Axis: Z
+-      Channel Name: intensity
+-      Class: rviz/PointCloud2
+-      Color: 255; 255; 255
+-      Color Transformer: AxisColor
+-      Decay Time: 1
+-      Enabled: true
+-      Invert Rainbow: false
+-      Max Color: 255; 255; 255
+-      Min Color: 0; 0; 0
+-      Name: PointCloud2
+-      Position Transformer: XYZ
+-      Queue Size: 100
+-      Selectable: true
+-      Size (Pixels): 2
+-      Size (m): 0.009999999776482582
+-      Style: Points
+-      Topic: /unilidar/cloud
+-      Unreliable: false
+-      Use Fixed Frame: true
+-      Use rainbow: true
+-      Value: true
+-  Enabled: true
+-  Global Options:
+-    Background Color: 48; 48; 48
+-    Default Light: true
+-    Fixed Frame: unilidar_lidar
+-    Frame Rate: 30
+-  Name: root
+-  Tools:
+-    - Class: rviz/Interact
+-      Hide Inactive Objects: true
+-    - Class: rviz/MoveCamera
+-    - Class: rviz/Select
+-    - Class: rviz/FocusCamera
+-    - Class: rviz/Measure
+-    - Class: rviz/SetInitialPose
+-      Theta std deviation: 0.2617993950843811
+-      Topic: /initialpose
+-      X std deviation: 0.5
+-      Y std deviation: 0.5
+-    - Class: rviz/SetGoal
+-      Topic: /move_base_simple/goal
+-    - Class: rviz/PublishPoint
+-      Single click: true
+-      Topic: /clicked_point
+-  Value: true
+-  Views:
+-    Current:
+-      Class: rviz/Orbit
+-      Distance: 13.027541160583496
+-      Enable Stereo Rendering:
+-        Stereo Eye Separation: 0.05999999865889549
+-        Stereo Focal Distance: 1
+-        Swap Stereo Eyes: false
+-        Value: false
+-      Field of View: 0.7853981852531433
+-      Focal Point:
+-        X: 1.1431114673614502
+-        Y: 1.5631128549575806
+-        Z: 0.7687954902648926
+-      Focal Shape Fixed Size: false
+-      Focal Shape Size: 0.05000000074505806
+-      Invert Z Axis: false
+-      Name: Current View
+-      Near Clip Distance: 0.009999999776482582
+-      Pitch: 0.5147969722747803
+-      Target Frame: <Fixed Frame>
+-      Yaw: 5.543568134307861
+-    Saved: ~
+-Window Geometry:
+-  Displays:
+-    collapsed: false
+-  Height: 836
+-  Hide Left Dock: false
+-  Hide Right Dock: true
+-  QMainWindow State: 000000ff00000000fd000000040000000000000156000002eafc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d000002ea000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f0000021efc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003b0000021e000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000073e00000039fc0100000002fb0000000800540069006d006500000000000000073e0000041800fffffffb0000000800540069006d006501000000000000045000000000000000000000049c000002ea00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+-  Selection:
+-    collapsed: false
+-  Time:
+-    collapsed: false
+-  Tool Properties:
+-    collapsed: false
+-  Views:
+-    collapsed: true
+-  Width: 1528
+-  X: 72
+-  Y: 27
+diff --git a/unitree_lidar_ros/src/unitree_lidar_ros/src/unitree_lidar_ros_node.cpp b/unitree_lidar_ros/src/unitree_lidar_ros/src/unitree_lidar_ros_node.cpp
+deleted file mode 100755
+index 7de5b4d..0000000
+--- a/unitree_lidar_ros/src/unitree_lidar_ros/src/unitree_lidar_ros_node.cpp
++++ /dev/null
+@@ -1,26 +0,0 @@
+-/**********************************************************************
+- Copyright (c) 2020-2023, Unitree Robotics.Co.Ltd. All rights reserved.
+-***********************************************************************/
+-
+-#include "unitree_lidar_ros.h"
+-
+-using namespace unilidar_sdk2;
+-
+-int main(int argc, char **argv)
+-{
+-  // ROS
+-  ros::init(argc, argv, "unitree_lidar_ros");
+-  ros::NodeHandle nh;
+-  
+-  UnitreeLidarRosNode node(nh);
+-  // ros::Rate rate(2000);
+-
+-  while (nh.ok())
+-  {
+-    ros::spinOnce();
+-    node.run();
+-    // rate.sleep();
+-  }
+-
+-  return 0;
+-}
+\ No newline at end of file
+diff --git a/unitree_lidar_ros2/src/unitree_lidar_ros2/launch/launch.py b/unitree_lidar_ros2/src/unitree_lidar_ros2/launch/launch.py
+index e748dff..c083ee4 100644
+--- a/unitree_lidar_ros2/src/unitree_lidar_ros2/launch/launch.py
++++ b/unitree_lidar_ros2/src/unitree_lidar_ros2/launch/launch.py
+@@ -16,12 +16,12 @@ def generate_launch_description():
+                 {'initialize_type': 2},
+                 {'work_mode': 0},
+                 {'use_system_timestamp': True},
+-                {'range_min': 0.0},
++                {'range_min': 0.5},
+                 {'range_max': 100.0},
+                 {'cloud_scan_num': 18},
+ 
+                 {'serial_port': '/dev/ttyACM0'},
+-                {'baudrate': 4000000},
++                {'baudrate': 4608000},
+ 
+                 {'lidar_port': 6101},
+                 {'lidar_ip': '192.168.1.62'},
+@@ -46,4 +46,4 @@ def generate_launch_description():
+         arguments=['-d', rviz_config_file],
+         output='log'
+     )
+-    return LaunchDescription([node1, rviz_node])
+\ No newline at end of file
++    return LaunchDescription([node1, rviz_node])

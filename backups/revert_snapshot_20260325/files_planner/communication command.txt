@@ -36,30 +36,6 @@ cd /home/nyu/Codespace/nyush-rm-vision
 just test detect --web --send
 just test gimbal configs/sentry.yaml
 
-0.2.1 一键自瞄模式
-------------------
-cd /home/nyu/Codespace/nyush-rm-control
-just sentry-bridge --port /dev/ttyACM0
-
-source /opt/ros/humble/setup.zsh
-source /home/nyu/sentry_planner/install/setup.zsh
-python3 /home/nyu/Codespace/nyush-rm-vision/serial_sender.py \
-  --port /tmp/nyush-rm-sentry-radar \
-  --ros2 \
-  --topic /cmd_vel_chassis_bt \
-  --robot-control-topic /robot_control
-
-cd /home/nyu/sentry_planner
-./start_autoaim_mode.sh
-
-
-常用可调参数：
-- `AUTOAIM_MODE=autoaim`：视觉接管 + 丢目标回搜索
-- `AUTOAIM_MODE=scan`：纯扫描，不允许视觉接管
-- `START_VISION=0`：只发 `/robot_control`，不启动 `detect --web --send`
-- `AUTOAIM_SCAN_YAW_RATE_DEG_S=120.0`
-- `AUTOAIM_SEARCH_PITCH_DEG=-6.0`
-
 0.3 常见报错含义
 ----------------
 如果你在 `nyush-rm-vision` 里跑：
@@ -243,16 +219,15 @@ just sentry-bridge --port /dev/ttyACM0
 cd /home/nyu/Codespace/nyush-rm-vision
 just test detect --web --send
 
-终端 3，主入口，起 Nav2 + adapter + BT(center_attack_fullstack) + serial_sender：
+终端 3，主入口，起 Nav2 + adapter + BT + serial_sender：
 cd /home/nyu/sentry_planner
 ENABLE_RVIZ=1 START_SERIAL_SENDER=1 RADAR_PTY=/tmp/nyush-rm-sentry-radar ./start_robot.sh
 
 cd /home/nyu/nav_ws
-BT_STYLE=center_attack_fullstack \
 START_SERIAL_SENDER=1 \
-START_BT=1 \
-RADAR_PTY=/tmp/nyush-rm-sentry-radar \
+START_ROBOT_CONTROL_KEEPALIVE=1 \
 START_FAKE_VEL_TRANSFORM=1 \
+RADAR_PTY=/tmp/nyush-rm-sentry-radar \
 ./start_robot.sh
 
 pkill -9 -f fastlio_mapping
@@ -261,6 +236,52 @@ pkill -9 -f pointcloud_to_laserscan
 pkill -9 -f static_transform_publisher
 pkill -9 -f "ros2 launch fast_lio"
 pkill -9 -f "ros2 launch livox_ros_driver2"
+
+cd /home/nyu/sentry_planner
+MAP_FILE="$HOME/Desktop/map/11_map.yaml" \
+ENABLE_RVIZ=1 \
+WAIT_MANUAL_INITIAL_POSE=1 \
+PUBLISH_NAV2_INITIAL_POSE=0 \
+START_SERIAL_SENDER=1 \
+START_ROBOT_CONTROL_KEEPALIVE=1 \
+SERIAL_SENDER_TOPIC=/cmd_vel_chassis \
+RADAR_PTY=/tmp/nyush-rm-sentry-radar \
+./start_nav_clean.sh
+
+
+
+cd /home/nyu/sentry_planner
+ENABLE_RVIZ=1 \
+LOCALIZATION_MODE=amcl \
+PUBLISH_NAV2_INITIAL_POSE=0 \
+WAIT_MANUAL_INITIAL_POSE=1 \
+START_SERIAL_SENDER=1 \
+RADAR_PTY=/tmp/nyush-rm-sentry-radar \
+./start_robot.sh
+
+cd /home/nyu/sentry_planner
+MAP_FILE="$HOME/Desktop/map/11_map.yaml" \
+ENABLE_RVIZ=1 \
+WAIT_MANUAL_INITIAL_POSE=1 \
+PUBLISH_NAV2_INITIAL_POSE=0 \
+START_SERIAL_SENDER=1 \
+START_ROBOT_CONTROL_KEEPALIVE=1 \
+SERIAL_SENDER_TOPIC=/cmd_vel_chassis \
+RADAR_PTY=/tmp/nyush-rm-sentry-radar \
+./start_nav_clean.sh
+
+cd /home/nyu/sentry_planner
+MAP_FILE="$HOME/Desktop/map/11_map.yaml" \
+ENABLE_RVIZ=1 \
+WAIT_MANUAL_INITIAL_POSE=1 \
+PUBLISH_NAV2_INITIAL_POSE=0 \
+START_SERIAL_SENDER=1 \
+START_ROBOT_CONTROL_KEEPALIVE=1 \
+SERIAL_SENDER_TOPIC=/cmd_vel_chassis \
+RADAR_PTY=/tmp/nyush-rm-sentry-radar \
+./start_nav_clean.sh
+
+
 
 see pointcloud:
 export LD_PRELOAD=/lib/x86_64-linux-gnu/libusb-1.0.so.0

@@ -429,6 +429,12 @@ template<class T> inline
 template<class T> inline
   void RosActionNode<T>::cancelGoal()
 {
+  if (!goal_received_ || !goal_handle_)
+  {
+    future_goal_handle_ = {};
+    return;
+  }
+
   auto future_result = action_client_->async_get_result(goal_handle_);
   auto future_cancel = action_client_->async_cancel_goal(goal_handle_);
 
@@ -451,4 +457,3 @@ template<class T> inline
 
 
 }  // namespace BT
-
