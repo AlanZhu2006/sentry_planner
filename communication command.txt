@@ -41,6 +41,17 @@ just test gimbal configs/sentry.yaml
 cd /home/nyu/Codespace/nyush-rm-control
 just sentry-bridge --port /dev/ttyACM0
 
+cd /home/nyu/sentry_planner
+./start_autoaim_mode.sh
+
+说明：
+- 现在 `start_autoaim_mode.sh` 默认会自动补起 `serial_sender.py`
+- 也就是通常只需要 2 个终端：
+  1. bridge
+  2. `./start_autoaim_mode.sh`
+- 如果你坚持手动起 sender，也仍然可以
+
+手动 sender 版本：
 source /opt/ros/humble/setup.zsh
 source /home/nyu/sentry_planner/install/setup.zsh
 python3 /home/nyu/Codespace/nyush-rm-vision/serial_sender.py \
@@ -49,14 +60,12 @@ python3 /home/nyu/Codespace/nyush-rm-vision/serial_sender.py \
   --topic /cmd_vel_chassis_bt \
   --robot-control-topic /robot_control
 
-cd /home/nyu/sentry_planner
-./start_autoaim_mode.sh
-
 
 常用可调参数：
 - `AUTOAIM_MODE=autoaim`：视觉接管 + 丢目标回搜索
 - `AUTOAIM_MODE=scan`：纯扫描，不允许视觉接管
 - `START_VISION=0`：只发 `/robot_control`，不启动 `detect --web --send`
+- `AUTO_START_SERIAL_SENDER=0`：关闭自动补起 sender
 - `AUTOAIM_SCAN_YAW_RATE_DEG_S=120.0`
 - `AUTOAIM_SEARCH_PITCH_DEG=-6.0`
 
@@ -246,6 +255,13 @@ just test detect --web --send
 终端 3，主入口，起 Nav2 + adapter + BT(center_attack_fullstack) + serial_sender：
 cd /home/nyu/sentry_planner
 ENABLE_RVIZ=1 START_SERIAL_SENDER=1 RADAR_PTY=/tmp/nyush-rm-sentry-radar ./start_robot.sh
+
+cd /home/nyu/nav_ws
+./start_robot_no_bt.sh
+
+说明：
+- `start_robot_no_bt.sh` 现在默认会自动起 `/robot_control` keepalive
+- 否则当前 MCU 不会接管外部导航速度，现象就是 `/cmd_vel_chassis` 有值但底盘不动
 
 cd /home/nyu/nav_ws
 BT_STYLE=center_attack_fullstack \
