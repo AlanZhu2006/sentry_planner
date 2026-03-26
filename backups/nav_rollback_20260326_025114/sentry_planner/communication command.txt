@@ -240,7 +240,7 @@ just test detect --web --send
 阶段 2：上真实桥接、真实裁判、真实运动
 终端 1，桥：
 cd /home/nyu/Codespace/nyush-rm-control
-just sentry-bridge 
+just sentry-bridge --port /dev/ttyACM0
 
 
 终端 2，视觉，可先不开；如果要联动视觉再开：
@@ -256,12 +256,14 @@ cd /home/nyu/nav_ws
 
 说明：
 - `start_robot_no_bt.sh` 现在默认会自动起 `/robot_control` keepalive
+- `start_robot_no_bt.sh` 现在默认也会启动“云台点云补偿”试验链
+  如果要回退成原始静态 scan 链，用：
+  `START_GIMBAL_CLOUD_COMPENSATION=0 ./start_robot_no_bt.sh`
 - 否则当前 MCU 不会接管外部导航速度，现象就是 `/cmd_vel_chassis` 有值但底盘不动
 
 cd /home/nyu/nav_ws
 BT_STYLE=center_attack_fullstack \
 START_SERIAL_SENDER=1 \
-SERIAL_SENDER_DISABLE_STATUS_PUB=1 \
 START_BT=1 \
 RADAR_PTY=/tmp/nyush-rm-sentry-radar \
 START_FAKE_VEL_TRANSFORM=1 \
@@ -273,20 +275,6 @@ pkill -9 -f pointcloud_to_laserscan
 pkill -9 -f static_transform_publisher
 pkill -9 -f "ros2 launch fast_lio"
 pkill -9 -f "ros2 launch livox_ros_driver2"
-
-终端 1：watcher
-
-source /opt/ros/humble/setup.zsh
-source /home/nyu/sentry_planner/rm_decision_ws/install/setup.zsh
-python3 /home/nyu/sentry_planner/scripts/watch_center_attack_state.py
-
-终端 2：hotkey
-
-source /opt/ros/humble/setup.zsh
-source /home/nyu/sentry_planner/rm_decision_ws/install/setup.zsh
-python3 /home/nyu/sentry_planner/scripts/bt_hotkey_debug.py
-
-
 
 see pointcloud:
 export LD_PRELOAD=/lib/x86_64-linux-gnu/libusb-1.0.so.0
@@ -307,8 +295,8 @@ ros2 launch pcd2pgm pcd2pgm_launch.py
 cd ~/Desktop/map
 ros2 run nav2_map_server map_saver_cli -f 11_map
 
-#在保存完图片至 11_map后，运行一下指令（只能在VNC的GUI上面），会自动打开相应figure，点击figure上面的点可以得到相对于原点的坐标
-python3 ~/nav_ws/map_point_picker.py ~/Desktop/map/11_map.yaml
+
+
 
 4.1 启动 sentry_planner（当前推荐）
 -----------------------------------

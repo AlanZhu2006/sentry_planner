@@ -41,6 +41,22 @@ PRESETS: dict[str, DebugPreset] = {
         current_hp=600,
         shooter_heat=0,
     ),
+    "6": DebugPreset(
+        name="IDLE_NO_SCAN",
+        description="静止，不扫描",
+        game_progress=2,
+        stage_remain_time=220,
+        current_hp=600,
+        shooter_heat=0,
+    ),
+    "5": DebugPreset(
+        name="PRESTART_SCAN",
+        description="比赛准备阶段，只原地扫描",
+        game_progress=3,
+        stage_remain_time=220,
+        current_hp=600,
+        shooter_heat=0,
+    ),
     "1": DebugPreset(
         name="APPROACH_CENTER",
         description="比赛中 + 正常血量，去中心",

@@ -1,0 +1,356 @@
+diff --git a/application/cmd/robot_cmd.c b/application/cmd/robot_cmd.c
+index f6459ec..b9b49cd 100644
+--- a/application/cmd/robot_cmd.c
++++ b/application/cmd/robot_cmd.c
+@@ -15,6 +15,7 @@
+ #include "led.h"
+ // std
+ #include <math.h>
++#include <stdint.h>
+ 
+ // 私有宏,自动将编码器转换成角度值
+ #define YAW_ALIGN_ANGLE                                                        \
+@@ -268,6 +269,92 @@ static uint8_t ShouldUseSentryVisionAutoSearch(
+                    (sentry_bt_scan_enabled ||
+                     sentry_bt_search_when_target_lost));
+ }
++
++static void LogSentryBTControlState(uint8_t vision_enabled,
++                                    uint8_t sentry_gimbal_auto_rotate_requested,
++                                    uint8_t sentry_bt_scan_enabled,
++                                    uint8_t sentry_bt_vision_control_enabled,
++                                    uint8_t sentry_bt_search_when_target_lost,
++                                    uint8_t sentry_use_vision_auto_search,
++                                    uint8_t sentry_bt_scan_applied) {
++  static uint8_t log_inited = 0u;
++  static uint32_t last_log_ms = 0u;
++  static uint8_t last_valid = 0u;
++  static uint8_t last_has_bt = 0u;
++  static uint8_t last_vision_enabled = 0u;
++  static uint8_t last_scan_enabled = 0u;
++  static uint8_t last_vision_control_enabled = 0u;
++  static uint8_t last_search_when_target_lost = 0u;
++  static uint8_t last_use_vision_auto_search = 0u;
++  static uint8_t last_local_rotate_requested = 0u;
++  static uint8_t last_scan_applied = 0u;
++  static Robot_Status_e last_robot_state = ROBOT_STOP;
++  static uint8_t last_flags = 0u;
++  static float last_scan_yaw_rate_deg_s = 0.0f;
++  static float last_search_pitch_deg = 0.0f;
++  uint32_t now_ms = HAL_GetTick();
++  uint8_t valid = IsSentryExtSnapshotValid(&sentry_ext_snapshot);
++  uint8_t has_bt = HasSentryBTControl();
++  uint8_t search_pitch_changed = (uint8_t)(
++      (isnan(sentry_ext_snapshot.search_pitch_deg) && !isnan(last_search_pitch_deg)) ||
++      (!isnan(sentry_ext_snapshot.search_pitch_deg) && isnan(last_search_pitch_deg)) ||
++      (!isnan(sentry_ext_snapshot.search_pitch_deg) && !isnan(last_search_pitch_deg) &&
++       fabsf(sentry_ext_snapshot.search_pitch_deg - last_search_pitch_deg) > 1e-3f));
++  uint8_t should_log = 0u;
++  uint32_t age_ms = valid ? (now_ms - sentry_ext_snapshot.ts_ms) : UINT32_MAX;
++
++  if (!log_inited) {
++    should_log = 1u;
++    log_inited = 1u;
++  }
++
++  if (valid != last_valid || has_bt != last_has_bt ||
++      vision_enabled != last_vision_enabled ||
++      sentry_bt_scan_enabled != last_scan_enabled ||
++      sentry_bt_vision_control_enabled != last_vision_control_enabled ||
++      sentry_bt_search_when_target_lost != last_search_when_target_lost ||
++      sentry_use_vision_auto_search != last_use_vision_auto_search ||
++      sentry_gimbal_auto_rotate_requested != last_local_rotate_requested ||
++      sentry_bt_scan_applied != last_scan_applied ||
++      robot_state != last_robot_state ||
++      sentry_ext_snapshot.control_flags != last_flags ||
++      fabsf(sentry_ext_snapshot.scan_yaw_rate_deg_s - last_scan_yaw_rate_deg_s) > 1e-3f ||
++      search_pitch_changed) {
++    should_log = 1u;
++  } else if ((valid || has_bt) && (now_ms - last_log_ms) >= 1000u) {
++    should_log = 1u;
++  }
++
++  if (!should_log) {
++    return;
++  }
++
++  LOGINFO("[sentry][bt] valid=%u has=%u flags=0x%02X vision=%u scan=%u "
++          "vision_ctrl=%u search_lost=%u auto_search=%u scan_apply=%u "
++          "local_rotate=%u robot=%u age_ms=%lu scan_yaw=%.3f search_pitch=%.3f",
++          valid, has_bt, sentry_ext_snapshot.control_flags, vision_enabled,
++          sentry_bt_scan_enabled, sentry_bt_vision_control_enabled,
++          sentry_bt_search_when_target_lost, sentry_use_vision_auto_search,
++          sentry_bt_scan_applied, sentry_gimbal_auto_rotate_requested,
++          (unsigned)robot_state, (unsigned long)age_ms,
++          sentry_ext_snapshot.scan_yaw_rate_deg_s,
++          sentry_ext_snapshot.search_pitch_deg);
++
++  last_log_ms = now_ms;
++  last_valid = valid;
++  last_has_bt = has_bt;
++  last_vision_enabled = vision_enabled;
++  last_scan_enabled = sentry_bt_scan_enabled;
++  last_vision_control_enabled = sentry_bt_vision_control_enabled;
++  last_search_when_target_lost = sentry_bt_search_when_target_lost;
++  last_use_vision_auto_search = sentry_use_vision_auto_search;
++  last_local_rotate_requested = sentry_gimbal_auto_rotate_requested;
++  last_scan_applied = sentry_bt_scan_applied;
++  last_robot_state = robot_state;
++  last_flags = sentry_ext_snapshot.control_flags;
++  last_scan_yaw_rate_deg_s = sentry_ext_snapshot.scan_yaw_rate_deg_s;
++  last_search_pitch_deg = sentry_ext_snapshot.search_pitch_deg;
++}
+ #endif
+ 
+ static uint8_t ConsumeKeyEdgeCount(uint8_t *last_count, uint8_t current_count) {
+@@ -1280,6 +1367,7 @@ void RobotCMDTask() {
+   uint8_t sentry_bt_vision_control_enabled = 0u;
+   uint8_t sentry_bt_search_when_target_lost = 0u;
+   uint8_t sentry_use_vision_auto_search = 0u;
++  uint8_t sentry_bt_scan_applied = 0u;
+ #endif
+   // BMI088Acquire(bmi088_test,&bmi088_data) ;
+   // 从其他应用获取回传数据
+@@ -1489,11 +1577,19 @@ void RobotCMDTask() {
+   if (!sentry_gimbal_auto_rotate_requested) {
+     if (robot_state != ROBOT_STOP && sentry_bt_scan_enabled &&
+         !sentry_use_vision_auto_search) {
++      sentry_bt_scan_applied = 1u;
+       ApplySentryBTFunctionalScan();
+     } else {
+       ResetSentryGimbalScanState();
+     }
+   }
++
++  LogSentryBTControlState(vision_enabled, sentry_gimbal_auto_rotate_requested,
++                          sentry_bt_scan_enabled,
++                          sentry_bt_vision_control_enabled,
++                          sentry_bt_search_when_target_lost,
++                          sentry_use_vision_auto_search,
++                          sentry_bt_scan_applied);
+ #endif
+ 
+ 
+diff --git a/application/robot_configs/robot_sentry.h b/application/robot_configs/robot_sentry.h
+index a620c7f..dd73d35 100644
+--- a/application/robot_configs/robot_sentry.h
++++ b/application/robot_configs/robot_sentry.h
+@@ -94,9 +94,9 @@
+ #define SENTRY_OPERATOR_INPUT_ROTATE_CCW_90 1 // 操作器前后左右映射整体逆时针旋转 90 度
+ #define CHASSIS_KB_MOVE_SPEED_X 300.0f // 键鼠模式底盘前后移动速度
+ #define CHASSIS_KB_MOVE_SPEED_Y 300.0f
+-#define SENTRY_EXT_CMD_FIXED_FRAME 0 // 外部 BT/ROS 底盘命令按雷达/云台 yaw 坐标系解释: +vx=雷达前方, +vy=雷达左方
+-#define SENTRY_EXT_CMD_VX_SIGN -1.0f // 外部 BT/ROS vx 轴修正: 当前机构前进方向与雷达前方相反
+-#define SENTRY_EXT_CMD_VY_SIGN 1.0f  // 外部 BT/ROS vy 轴修正: +vy 保持为雷达左方
++#define SENTRY_EXT_CMD_FIXED_FRAME 1 // 外部 BT/ROS 底盘命令按固定底盘坐标系解释: +vx=车头前方, +vy=车体左方
++#define SENTRY_EXT_CMD_VX_SIGN 1.0f  // 固定底盘坐标系: +vx 始终表示车头前方
++#define SENTRY_EXT_CMD_VY_SIGN -1.0f // 固定底盘坐标系: 翻转 y 轴，使 +vy 表示车体左方
+ #define SENTRY_GIMBAL_AUTO_ROTATE_PERIOD_S 3.0f // 右拨杆中位时云台自转一圈周期，恢复到约 120 deg/s
+ #define SENTRY_VISION_SEARCH_YAW_RATE_DEG_S 120.0f // 左拨杆中位且未识别目标时，yaw 360°搜索角速度
+ #define SENTRY_VISION_SEARCH_PITCH_CENTER_DEG -6.0f // 左拨杆中位搜索时 pitch 摆动中心角
+diff --git a/modules/master_machine/master_process.c b/modules/master_machine/master_process.c
+index 1559399..1ec36bc 100644
+--- a/modules/master_machine/master_process.c
++++ b/modules/master_machine/master_process.c
+@@ -52,6 +52,64 @@ _Static_assert(sizeof(VisionToSentryExtFrame_s) ==
+ static VisionToSentryExt_s sentry_ext_data;
+ static SentryTelemetry_s sentry_telemetry_data;
+ 
++static void LogSentryExtPacket(const VisionToSentryExtFrame_s *packet)
++{
++    static uint32_t last_log_ms = 0u;
++    static uint8_t last_flags = 0xFFu;
++    static float last_scan_yaw_rate_deg_s = 0.0f;
++    static float last_search_pitch_deg = 0.0f;
++    static float last_vx = 0.0f;
++    static float last_vy = 0.0f;
++    static float last_wz = 0.0f;
++    uint32_t now_ms;
++    uint8_t search_pitch_changed;
++    uint8_t should_log = 0u;
++
++    if (!packet)
++    {
++        return;
++    }
++
++    now_ms = HAL_GetTick();
++    search_pitch_changed = (uint8_t)(
++        (isnan(packet->search_pitch_deg) && !isnan(last_search_pitch_deg)) ||
++        (!isnan(packet->search_pitch_deg) && isnan(last_search_pitch_deg)) ||
++        (!isnan(packet->search_pitch_deg) && !isnan(last_search_pitch_deg) &&
++         fabsf(packet->search_pitch_deg - last_search_pitch_deg) > 1e-3f));
++
++    if (packet->control_flags != last_flags ||
++        fabsf(packet->scan_yaw_rate_deg_s - last_scan_yaw_rate_deg_s) > 1e-3f ||
++        search_pitch_changed ||
++        fabsf(packet->vx - last_vx) > 1e-3f ||
++        fabsf(packet->vy - last_vy) > 1e-3f ||
++        fabsf(packet->wz - last_wz) > 1e-3f)
++    {
++        should_log = 1u;
++    }
++    else if ((now_ms - last_log_ms) >= 1000u)
++    {
++        should_log = 1u;
++    }
++
++    if (!should_log)
++    {
++        return;
++    }
++
++    LOGINFO("[vision][sx][rx] flags=0x%02X vx=%.3f vy=%.3f wz=%.3f scan_yaw=%.3f "
++            "search_pitch=%.3f",
++            packet->control_flags, packet->vx, packet->vy, packet->wz,
++            packet->scan_yaw_rate_deg_s, packet->search_pitch_deg);
++
++    last_log_ms = now_ms;
++    last_flags = packet->control_flags;
++    last_scan_yaw_rate_deg_s = packet->scan_yaw_rate_deg_s;
++    last_search_pitch_deg = packet->search_pitch_deg;
++    last_vx = packet->vx;
++    last_vy = packet->vy;
++    last_wz = packet->wz;
++}
++
+ static uint8_t EncodeSentryRobotStatus(const referee_info_t *referee_data)
+ {
+     uint8_t robot_status = 0u;
+@@ -336,6 +394,7 @@ static void ApplySentryExtPacket(const VisionToSentryExtFrame_s *packet)
+     if (!packet)
+         return;
+ 
++    LogSentryExtPacket(packet);
+     sentry_ext_data.vx = packet->vx;
+     sentry_ext_data.vy = packet->vy;
+     sentry_ext_data.wz = packet->wz;
+diff --git a/scripts/sentry_bridge.py b/scripts/sentry_bridge.py
+index 7d44dc8..ebfc899 100644
+--- a/scripts/sentry_bridge.py
++++ b/scripts/sentry_bridge.py
+@@ -62,10 +62,11 @@ def _try_enable_ros2() -> bool:
+ 
+     def _do_imports() -> bool:
+         try:
+-            global rclpy, Odometry, TransformStamped, TransformBroadcaster
++            global rclpy, JointState, Odometry, TransformStamped, TransformBroadcaster
+             import rclpy
+             from geometry_msgs.msg import TransformStamped
+             from nav_msgs.msg import Odometry
++            from sensor_msgs.msg import JointState
+             from tf2_ros import TransformBroadcaster
+         except ImportError:
+             return False
+@@ -140,6 +141,7 @@ DEFAULT_CHASSIS_ODOM_TOPIC = os.environ.get("SENTRY_CHASSIS_ODOM_TOPIC", "/chass
+ DEFAULT_ODOM_FRAME = os.environ.get("SENTRY_CHASSIS_ODOM_FRAME", "odom")
+ DEFAULT_BASE_FRAME = os.environ.get("SENTRY_CHASSIS_BASE_FRAME", "base_footprint")
+ DEFAULT_LIDAR_FRAME = os.environ.get("SENTRY_CHASSIS_LIDAR_FRAME", "body_feedback")
++DEFAULT_GIMBAL_STATE_TOPIC = os.environ.get("SENTRY_GIMBAL_STATE_TOPIC", "/gimbal_joint_states")
+ 
+ 
+ def _read_axis_sign(env_name: str, default: float) -> float:
+@@ -452,20 +454,26 @@ class Ros2TelemetryPublisher:
+         odom_frame: str = DEFAULT_ODOM_FRAME,
+         base_frame: str = DEFAULT_BASE_FRAME,
+         lidar_frame: str = DEFAULT_LIDAR_FRAME,
++        gimbal_state_topic: str = DEFAULT_GIMBAL_STATE_TOPIC,
+     ) -> None:
+         self.available = ROS2_RUNTIME_AVAILABLE
+         self.odom_topic = odom_topic
+         self.odom_frame = odom_frame
+         self.base_frame = base_frame
+         self.lidar_frame = lidar_frame
++        self.gimbal_state_topic = gimbal_state_topic
+         self.node = None
+         self.odom_pub = None
++        self.gimbal_state_pub = None
+         self.tf_broadcaster = None
+         self.last_mono_s: float | None = None
+         self.x = 0.0
+         self.y = 0.0
+         self.yaw = 0.0
+         self.body_yaw = 0.0
++        self.body_pitch = 0.0
++        self.body_yaw_vel = 0.0
++        self.body_pitch_vel = 0.0
+         self.latest_vx = 0.0
+         self.latest_vy = 0.0
+         self.latest_wz = 0.0
+@@ -481,8 +489,9 @@ class Ros2TelemetryPublisher:
+             self._owns_rclpy = True
+         self.node = rclpy.create_node("sentry_bridge_ros")
+         self.odom_pub = self.node.create_publisher(Odometry, self.odom_topic, 10)
++        self.gimbal_state_pub = self.node.create_publisher(JointState, self.gimbal_state_topic, 10)
+         self.tf_broadcaster = TransformBroadcaster(self.node)
+-        self.publish_body_tf(0.0)
++        self.publish_body_feedback(0.0, 0.0, 0.0, 0.0)
+         self.publish_chassis_odom(0.0, 0.0, 0.0)
+         self._heartbeat_thread = threading.Thread(
+             target=self._heartbeat_loop,
+@@ -523,13 +532,33 @@ class Ros2TelemetryPublisher:
+     def _stamp(self):
+         return self.node.get_clock().now().to_msg()
+ 
+-    def publish_body_tf(self, yaw_rad: float) -> None:
++    def publish_body_feedback(
++        self,
++        yaw_rad: float,
++        pitch_rad: float,
++        yaw_vel_rad_s: float,
++        pitch_vel_rad_s: float,
++    ) -> None:
+         with self._publish_lock:
+             if self.node is None or self.tf_broadcaster is None:
+                 return
++            stamp = self._stamp()
+             self.body_yaw = float(yaw_rad)
++            self.body_pitch = float(pitch_rad)
++            self.body_yaw_vel = float(yaw_vel_rad_s)
++            self.body_pitch_vel = float(pitch_vel_rad_s)
++
++            if self.gimbal_state_pub is not None:
++                joint_state = JointState()
++                joint_state.header.stamp = stamp
++                joint_state.header.frame_id = self.base_frame
++                joint_state.name = ["gimbal_yaw", "gimbal_pitch"]
++                joint_state.position = [self.body_yaw, self.body_pitch]
++                joint_state.velocity = [self.body_yaw_vel, self.body_pitch_vel]
++                self.gimbal_state_pub.publish(joint_state)
++
+             t = TransformStamped()
+-            t.header.stamp = self._stamp()
++            t.header.stamp = stamp
+             t.header.frame_id = self.base_frame
+             t.child_frame_id = self.lidar_frame
+             t.transform.translation.x = 0.0
+@@ -578,7 +607,12 @@ class Ros2TelemetryPublisher:
+             msg.twist.twist.angular.y = 0.0
+             msg.twist.twist.angular.z = self.latest_wz
+             self.odom_pub.publish(msg)
+-            self.publish_body_tf(self.body_yaw)
++            self.publish_body_feedback(
++                self.body_yaw,
++                self.body_pitch,
++                self.body_yaw_vel,
++                self.body_pitch_vel,
++            )
+             self.pump_ros()
+ 
+ 
+@@ -1097,8 +1131,13 @@ class RadarBridge:
+             if kind == "sp":
+                 if isinstance(payload, bytes) and len(payload) == SP_TX_SIZE:
+                     try:
+-                        _q, yaw_rad, _yaw_vel, _pitch_rad, _pitch_vel = parse_sp_tx_frame(payload)
+-                        self.telemetry_pub.publish_body_tf(yaw_rad)
++                        _q, yaw_rad, yaw_vel_rad_s, pitch_rad, pitch_vel_rad_s = parse_sp_tx_frame(payload)
++                        self.telemetry_pub.publish_body_feedback(
++                            yaw_rad,
++                            pitch_rad,
++                            yaw_vel_rad_s,
++                            pitch_vel_rad_s,
++                        )
+                     except ValueError:
+                         pass
+                 safe_write_fd(self.vision_master, payload if isinstance(payload, bytes) else b"")

@@ -102,8 +102,13 @@ class CenterAttackWatcher(Node):
         if self.state.game_progress is None or self.state.current_hp is None or self.state.shooter_heat is None:
             return "WAIT_INPUT"
 
+        if self.state.game_progress == 3:
+            if self.state.current_hp < self.args.hp_threshold or self.state.shooter_heat > self.args.heat_threshold:
+                return "HOME_RECOVER"
+            return "PRESTART_SCAN"
+
         if self.state.game_progress != 4:
-            return "HOME_STANDBY"
+            return "IDLE"
 
         if self.state.current_hp < self.args.hp_threshold or self.state.shooter_heat > self.args.heat_threshold:
             return "HOME_RECOVER"
@@ -142,10 +147,10 @@ class CenterAttackWatcher(Node):
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Watch center_attack_simple branch state")
     parser.add_argument("--rate-hz", type=float, default=2.0)
-    parser.add_argument("--home-x", type=float, default=0.8)
-    parser.add_argument("--home-y", type=float, default=7.8)
-    parser.add_argument("--center-x", type=float, default=6.33)
-    parser.add_argument("--center-y", type=float, default=4.32)
+    parser.add_argument("--home-x", type=float, default=0.0)
+    parser.add_argument("--home-y", type=float, default=0.0)
+    parser.add_argument("--center-x", type=float, default=10.965)
+    parser.add_argument("--center-y", type=float, default=-2.807)
     parser.add_argument("--hp-threshold", type=int, default=250)
     parser.add_argument("--heat-threshold", type=int, default=350)
     return parser.parse_args()

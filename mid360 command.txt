@@ -25,7 +25,7 @@ ros2 run nav2_map_server map_saver_cli -f 11_map
 - Nav2
 - `center_attack_simple`
 - 手动调 “去中心 / 守中 / 回家”
-python3 /home/nyu/Codespace/nyush-rm-control/scripts/sentry_bridge.py --port /dev/ttyACM0
+python3 /home/nyu/Codespace/nyush-rm-control/scripts/sentry_bridge.py --port /dev/ttyACM1
 
 source /opt/ros/humble/setup.zsh
 source /home/nyu/sentry_planner/install/setup.zsh
@@ -39,7 +39,6 @@ source /opt/ros/humble/setup.zsh
 source /home/nyu/sentry_planner/rm_decision_ws/install/setup.zsh
 ros2 topic pub -r 20 /robot_control rm_decision_interfaces/msg/RobotControl \
 "{stop_gimbal_scan: true, chassis_spin_vel: 0.0, scan_enabled: true, allow_vision_control: true, search_when_target_lost: true, scan_yaw_rate_deg_s: 120.0, search_pitch_deg: -6.0}"
-
 
 source /opt/ros/humble/setup.zsh
 source /home/nyu/sentry_planner/install/setup.zsh
