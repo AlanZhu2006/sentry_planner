@@ -46,3 +46,118 @@
 [2026-03-28 05:40:54.101] [warning] MV_CC_GetImageBuffer timed out 50 times
 [2026-03-28 05:40:54.410] [debug] [Gimbal] CRC16 check failed.
 [2026-03-28 05:40:55.440] [info] [Gimbal] Received 1000 packets, freq=67.6Hz
+[2026-03-28 05:40:55.699] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:40:56.090] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:40:57.090] [info] [Gimbal] Received 1100 packets, freq=60.6Hz
+[2026-03-28 05:40:58.480] [info] [Gimbal] Received 1200 packets, freq=72.0Hz
+[2026-03-28 05:40:59.167] [warning] MV_CC_GetImageBuffer timed out 100 times
+[2026-03-28 05:41:00.390] [info] [Gimbal] Received 1300 packets, freq=52.4Hz
+[2026-03-28 05:41:00.410] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:02.949] [info] [Gimbal] Received 1400 packets, freq=39.1Hz
+[2026-03-28 05:41:03.419] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:04.233] [warning] MV_CC_GetImageBuffer timed out 150 times
+[2026-03-28 05:41:04.439] [info] [Gimbal] Received 1500 packets, freq=67.1Hz
+[2026-03-28 05:41:05.359] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:05.399] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:06.549] [info] [Gimbal] Received 1600 packets, freq=47.4Hz
+[2026-03-28 05:41:07.259] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:07.299] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:07.369] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:07.659] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:07.959] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:08.039] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:08.199] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:08.599] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:08.879] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:09.189] [info] [Gimbal] Received 1700 packets, freq=37.9Hz
+[2026-03-28 05:41:09.297] [warning] MV_CC_GetImageBuffer timed out 200 times
+[2026-03-28 05:41:09.419] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:10.429] [info] [Gimbal] Received 1800 packets, freq=80.7Hz
+[2026-03-28 05:41:10.489] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:10.689] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:10.909] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:12.159] [info] [Gimbal] Received 1900 packets, freq=57.8Hz
+[2026-03-28 05:41:13.699] [info] [Gimbal] Received 2000 packets, freq=65.0Hz
+[2026-03-28 05:41:14.363] [warning] MV_CC_GetImageBuffer timed out 250 times
+[2026-03-28 05:41:15.759] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:16.429] [info] [Gimbal] Received 2100 packets, freq=36.6Hz
+[2026-03-28 05:41:18.478] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:18.758] [info] [Gimbal] Received 2200 packets, freq=42.9Hz
+[2026-03-28 05:41:19.179] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:19.429] [warning] MV_CC_GetImageBuffer timed out 300 times
+[2026-03-28 05:41:20.158] [info] [Gimbal] Received 2300 packets, freq=71.4Hz
+[2026-03-28 05:41:21.308] [info] [Gimbal] Received 2400 packets, freq=87.0Hz
+[2026-03-28 05:41:22.658] [info] [Gimbal] Received 2500 packets, freq=74.1Hz
+[2026-03-28 05:41:22.808] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:22.888] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:23.018] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:23.058] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:23.128] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:23.158] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:23.208] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:23.468] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:23.738] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:23.858] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:23.888] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:23.928] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:24.078] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:24.298] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:24.495] [warning] MV_CC_GetImageBuffer timed out 350 times
+[2026-03-28 05:41:24.698] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:25.398] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:25.468] [info] [Gimbal] Received 2600 packets, freq=35.6Hz
+[2026-03-28 05:41:25.658] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:26.907] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:27.738] [info] [Gimbal] Received 2700 packets, freq=44.1Hz
+[2026-03-28 05:41:29.561] [warning] MV_CC_GetImageBuffer timed out 400 times
+[2026-03-28 05:41:29.778] [info] [Gimbal] Received 2800 packets, freq=49.0Hz
+[2026-03-28 05:41:29.959] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:30.168] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:30.548] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:31.728] [info] [Gimbal] Received 2900 packets, freq=51.3Hz
+[2026-03-28 05:41:32.357] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:32.848] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:32.887] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:32.928] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:34.627] [warning] MV_CC_GetImageBuffer timed out 450 times
+[2026-03-28 05:41:34.967] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:35.218] [info] [Gimbal] Received 3000 packets, freq=28.7Hz
+[2026-03-28 05:41:35.427] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:37.338] [info] [Gimbal] Received 3100 packets, freq=47.2Hz
+[2026-03-28 05:41:37.527] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:37.687] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:37.717] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:39.297] [info] [Gimbal] Received 3200 packets, freq=51.0Hz
+[2026-03-28 05:41:39.457] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:39.597] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:39.692] [warning] MV_CC_GetImageBuffer timed out 500 times
+[2026-03-28 05:41:40.257] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:40.848] [info] [Gimbal] Received 3300 packets, freq=64.5Hz
+[2026-03-28 05:41:44.137] [info] [Gimbal] Received 3400 packets, freq=30.4Hz
+[2026-03-28 05:41:44.567] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:44.597] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:44.759] [warning] MV_CC_GetImageBuffer timed out 550 times
+[2026-03-28 05:41:45.997] [info] [Gimbal] Received 3500 packets, freq=53.8Hz
+[2026-03-28 05:41:46.227] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:46.727] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:47.037] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:47.057] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:47.097] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:47.117] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:47.477] [info] [Gimbal] Received 3600 packets, freq=67.6Hz
+[2026-03-28 05:41:47.627] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:48.187] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:48.307] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:48.627] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:48.917] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:48.997] [info] [Gimbal] Received 3700 packets, freq=65.8Hz
+[2026-03-28 05:41:49.825] [warning] MV_CC_GetImageBuffer timed out 600 times
+[2026-03-28 05:41:49.997] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:50.547] [info] [Gimbal] Received 3800 packets, freq=64.6Hz
+[2026-03-28 05:41:51.467] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:51.597] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:51.707] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:41:52.177] [info] [Gimbal] Received 3900 packets, freq=61.3Hz
+[2026-03-28 05:41:53.197] [info] [Gimbal] Received 4000 packets, freq=98.1Hz
+[2026-03-28 05:41:54.247] [info] [Gimbal] Received 4100 packets, freq=95.3Hz
+[2026-03-28 05:41:54.891] [warning] MV_CC_GetImageBuffer timed out 650 times
