@@ -1,0 +1,415 @@
+>>> 启动自瞄模式 keepalive...
+    mode              : autoaim (视觉接管 + 丢目标回搜索)
+    robot_control     : /robot_control @ 20Hz
+    scan_yaw_rate     : 120.0 deg/s
+    search_pitch      : -6.0 deg
+    chassis_spin_vel  : 0.0 rad/s
+
+>>> 前置条件提醒：
+    1. bridge 已启动
+    2. 右拨杆不要放在本地自转档
+    3. 如果 /robot_control 还没人订阅，脚本会自动补起 serial_sender
+publisher: beginning loop
+publishing #1: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #2: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #3: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #4: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #5: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+
+>>> 话题检查：
+publishing #6: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #7: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #8: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #9: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #10: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #11: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #12: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #13: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #14: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #15: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #16: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #17: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #18: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #19: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #20: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #21: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #22: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #23: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #24: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+Type: rm_decision_interfaces/msg/RobotControl
+Publisher count: 1
+Subscription count: 0
+
+>>> 自动启动 serial_sender...
+    port              : /tmp/nyush-rm-sentry-radar
+    topic             : /cmd_vel_chassis_bt
+    robot_control     : /robot_control
+publishing #25: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #26: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #27: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #28: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #29: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #30: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #31: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #32: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+[INFO] [1774647648.491242780] [cmd_vel_forwarder]: [ROS2] Subscribed to /cmd_vel_chassis_bt
+[INFO] [1774647648.492029697] [cmd_vel_forwarder]: [ROS2] Subscribed to /robot_control
+[INFO] [1774647648.492763104] [cmd_vel_forwarder]: [ROS2] Publishing /game_status and /robot_status from bridge telemetry
+publishing #33: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #34: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #35: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #36: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #37: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #38: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #39: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #40: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #41: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #42: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #43: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #44: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+
+>>> 等待 /robot_control 订阅者上线...
+publishing #45: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #46: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #47: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #48: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #49: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+Type: rm_decision_interfaces/msg/RobotControl
+Publisher count: 1
+Subscription count: 1
+
+>>> 启动视觉跟随：just test detect --web --send
+    web: http://127.0.0.1:8888
+publishing #50: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+[ensure-configured] build tree is valid, skip cmake
+publishing #51: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+[ 10%] Built target serial
+[ 20%] Built target tinympcstatic
+[ 43%] Built target tools
+[ 61%] Built target io
+publishing #52: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+[ 94%] Built target auto_aim
+publishing #53: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+[100%] Built target auto_aim_camera_test
+publishing #54: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+[2026-03-28 05:40:49.577] [info] auto_aim_camera_test started, send=true, display_mode=web
+[2026-03-28 05:40:49.577] [info] detect rx/tx log file: logs/detect_rx_tx_20260328_054049.csv
+[2026-03-28 05:40:49.577] [info] Forcing HikRobot exposure to 999812 us; ignoring config exposure 3000 us
+[2026-03-28 05:40:49.579] [info] HikRobot's daemon thread started.
+[2026-03-28 05:40:49.579] [info] [Gimbal] read_thread started.
+[2026-03-28 05:40:49.584] [info] [Gimbal] First q received.
+[2026-03-28 05:40:49.584] [info] [Gimbal] Protocol adapter enabled: rx(yaw=-1, pitch=-1, roll=1), tx(yaw=-1, pitch=-1)
+publishing #55: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #56: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #57: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #58: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+[2026-03-28 05:40:49.765] [debug] [Gimbal] CRC16 check failed.
+publishing #59: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #60: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #61: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+[2026-03-28 05:40:49.915] [warning] [YOLOV5] TensorRT backend requested but USE_TENSORRT is OFF, fallback to OpenVINO
+[2026-03-28 05:40:49.916] [warning] [YOLOV5] OpenVINO device 'GPU' unavailable, fallback to CPU
+publishing #62: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #63: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+[2026-03-28 05:40:50.042] [info] [YOLOV5] score threshold: 0.55
+[2026-03-28 05:40:50.044] [info] [Aimer] successfully loading shootmode
+[2026-03-28 05:40:50.044] [info] Web display started on http://localhost:8888
+[2026-03-28 05:40:50.044] [info] desktop session not detected, open http://127.0.0.1:8888 manually
+[2026-03-28 05:40:50.044] [info] Web display server starting on http://localhost:8888
+[2026-03-28 05:40:50.044] [info] Open http://localhost:8888 in your browser to view the stream
+publishing #64: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #65: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+[2026-03-28 05:40:50.102] [warning] MV_CC_OpenDevice failed: 0x80000203
+publishing #66: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #67: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #68: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #69: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #70: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #71: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+[2026-03-28 05:40:50.447] [info] Reset usb successfully :)
+publishing #72: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #73: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #74: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #75: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #76: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #77: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #78: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #79: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #80: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #81: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #82: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #83: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #84: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #85: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #86: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #87: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #88: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #89: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #90: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #91: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #92: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #93: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #94: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #95: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #96: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #97: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #98: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+[2026-03-28 05:40:51.790] [info] [Gimbal] Received 100 packets, freq=45.2Hz
+publishing #99: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #100: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #101: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+[2026-03-28 05:40:51.940] [warning] MV_CC_OpenDevice failed: 0x80000203
+publishing #102: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #103: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #104: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #105: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #106: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #107: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #108: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+[2026-03-28 05:40:52.289] [info] Reset usb successfully :)
+publishing #109: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #110: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #111: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #112: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #113: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #114: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #115: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #116: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #117: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #118: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #119: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #120: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #121: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #122: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #123: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #124: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #125: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #126: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #127: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #128: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #129: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #130: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #131: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #132: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #133: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #134: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #135: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #136: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #137: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #138: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+[2026-03-28 05:40:53.797] [warning] MV_CC_OpenDevice failed: 0x80000203
+publishing #139: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #140: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #141: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #142: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #143: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #144: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #145: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+[2026-03-28 05:40:54.145] [info] Reset usb successfully :)
+publishing #146: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #147: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #148: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+[2026-03-28 05:40:54.260] [debug] [Gimbal] CRC16 check failed.
+publishing #149: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+[2026-03-28 05:40:54.340] [debug] [Gimbal] CRC16 check failed.
+publishing #150: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #151: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+[2026-03-28 05:40:54.399] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:40:54.430] [info] [Gimbal] Received 200 packets, freq=37.9Hz
+publishing #152: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #153: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #154: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #155: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #156: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #157: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #158: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #159: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #160: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #161: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #162: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #163: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #164: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #165: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #166: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #167: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #168: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #169: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #170: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #171: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #172: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #173: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+
+publishing #174: rm_decision_interfaces.msg.RobotControl(stop_gimbal_scan=True, chassis_spin_vel=0.0, scan_enabled=True, allow_vision_control=True, search_when_target_lost=True, scan_yaw_rate_deg_s=120.0, search_pitch_deg=-6.0)
+

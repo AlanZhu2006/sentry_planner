@@ -1,0 +1,48 @@
+[autostart] ROS_DISTRO=humble
+/home/nyu/.local/bin/just
+[ensure-configured] build tree is valid, skip cmake
+[ 15%] Built target serial
+[ 20%] Built target tinympcstatic
+[ 43%] Built target tools
+[ 61%] Built target io
+[ 94%] Built target auto_aim
+[100%] Built target auto_aim_camera_test
+[2026-03-28 05:40:43.945] [info] auto_aim_camera_test started, send=true, display_mode=web
+[2026-03-28 05:40:43.945] [info] detect rx/tx log file: logs/detect_rx_tx_20260328_054043.csv
+[2026-03-28 05:40:43.946] [info] Forcing HikRobot exposure to 999812 us; ignoring config exposure 3000 us
+[2026-03-28 05:40:43.947] [info] HikRobot's daemon thread started.
+[2026-03-28 05:40:43.948] [info] [Gimbal] read_thread started.
+[2026-03-28 05:40:43.948] [info] [Gimbal] First q received.
+[2026-03-28 05:40:43.948] [info] [Gimbal] Protocol adapter enabled: rx(yaw=-1, pitch=-1, roll=1), tx(yaw=-1, pitch=-1)
+[2026-03-28 05:40:43.948] [info] [Gimbal] Received 100 packets, freq=infHz
+[2026-03-28 05:40:44.182] [warning] [YOLOV5] TensorRT backend requested but USE_TENSORRT is OFF, fallback to OpenVINO
+[2026-03-28 05:40:44.183] [warning] [YOLOV5] OpenVINO device 'GPU' unavailable, fallback to CPU
+[2026-03-28 05:40:44.309] [info] [YOLOV5] score threshold: 0.55
+[2026-03-28 05:40:44.311] [info] [Aimer] successfully loading shootmode
+[2026-03-28 05:40:44.311] [info] Web display started on http://localhost:8888
+[2026-03-28 05:40:44.311] [info] desktop session not detected, open http://127.0.0.1:8888 manually
+[2026-03-28 05:40:44.311] [info] Web display server starting on http://localhost:8888
+[2026-03-28 05:40:44.311] [info] Open http://localhost:8888 in your browser to view the stream
+[2026-03-28 05:40:44.475] [info] [Gimbal] Received 200 packets, freq=190.1Hz
+[2026-03-28 05:40:44.908] [info] HikRobot's capture thread started.
+[2026-03-28 05:40:45.470] [info] [Gimbal] Received 300 packets, freq=100.6Hz
+[2026-03-28 05:40:46.042] [info] camera preprocess enabled: raw=3072x2048, crop=2560x2048@(256, 0), output=1280x1024
+[2026-03-28 05:40:46.470] [info] [Gimbal] Received 400 packets, freq=100.1Hz
+[2026-03-28 05:40:47.470] [info] [Gimbal] Received 500 packets, freq=100.0Hz
+[2026-03-28 05:40:48.465] [info] [Gimbal] Received 600 packets, freq=100.5Hz
+[2026-03-28 05:40:49.465] [info] [Gimbal] Received 700 packets, freq=100.1Hz
+[2026-03-28 05:40:50.255] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:40:50.275] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:40:50.295] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:40:50.700] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:40:51.520] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:40:51.710] [info] [Gimbal] Received 800 packets, freq=44.5Hz
+[2026-03-28 05:40:52.030] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:40:52.680] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:40:52.980] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:40:53.190] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:40:53.270] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:40:53.959] [info] [Gimbal] Received 900 packets, freq=44.5Hz
+[2026-03-28 05:40:54.101] [warning] MV_CC_GetImageBuffer timed out 50 times
+[2026-03-28 05:40:54.410] [debug] [Gimbal] CRC16 check failed.
+[2026-03-28 05:40:55.440] [info] [Gimbal] Received 1000 packets, freq=67.6Hz
