@@ -1,4 +1,5 @@
 #include "rm_behavior_tree/rm_behavior_tree.h"
+#include "rm_behavior_tree/bt_conversions.hpp"
 
 #include <memory>
 #include <string>
@@ -14,15 +15,21 @@ int main(int argc, char ** argv)
   BT::BehaviorTreeFactory factory;
 
   std::string bt_xml_path;
+  std::string start_goal_pose = "0;0;0; 0;0;0;1";
+  std::string end_goal_pose = "10.965;-2.807;0; 0;0;0;1";
   bool enable_groot = true;
   int groot_port = 1667;
   auto node = std::make_shared<rclcpp::Node>("rm_behavior_tree");
   node->declare_parameter<std::string>(
     "style", "./rm_decision_ws/rm_behavior_tree/rm_behavior_tree.xml");
+  node->declare_parameter<std::string>("start_goal_pose", start_goal_pose);
+  node->declare_parameter<std::string>("end_goal_pose", end_goal_pose);
   node->declare_parameter<bool>("enable_groot", true);
   node->declare_parameter<int>("groot_port", 1667);
   node->get_parameter_or<std::string>(
     "style", bt_xml_path, "./rm_decision_ws/rm_behavior_tree/config/attack_left.xml");
+  node->get_parameter_or<std::string>("start_goal_pose", start_goal_pose, start_goal_pose);
+  node->get_parameter_or<std::string>("end_goal_pose", end_goal_pose, end_goal_pose);
   node->get_parameter_or<bool>("enable_groot", enable_groot, true);
   node->get_parameter_or<int>("groot_port", groot_port, 1667);
 
@@ -75,6 +82,13 @@ int main(int argc, char ** argv)
   RegisterRosNode(factory, BT::SharedLibrary::getOSName("robot_control"), params_robot_control);
 
   auto tree = factory.createTreeFromFile(bt_xml_path);
+  tree.rootBlackboard()->set(
+    "start_goal_pose", BT::convertFromString<geometry_msgs::msg::PoseStamped>(start_goal_pose));
+  tree.rootBlackboard()->set(
+    "end_goal_pose", BT::convertFromString<geometry_msgs::msg::PoseStamped>(end_goal_pose));
+
+  RCLCPP_INFO(node->get_logger(), "Start goal pose: %s", start_goal_pose.c_str());
+  RCLCPP_INFO(node->get_logger(), "End goal pose: %s", end_goal_pose.c_str());
 
   std::unique_ptr<BT::Groot2Publisher> publisher;
   if (enable_groot) {

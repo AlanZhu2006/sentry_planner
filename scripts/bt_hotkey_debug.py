@@ -19,6 +19,8 @@ import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rm_decision_interfaces.msg import GameStatus, RobotStatus
+from auto_aim_interfaces.msg import Armor, Armors
+from geometry_msgs.msg import Pose
 
 
 @dataclass
@@ -90,6 +92,14 @@ PRESETS: dict[str, DebugPreset] = {
         shooter_heat=0,
         is_attacked=True,
     ),
+    "7": DebugPreset(
+        name="FORCE_HOLD_ATTACK",
+        description="比赛中 + 强制敌人检测(原地小陀螺+自瞄)",
+        game_progress=4,
+        stage_remain_time=220,
+        current_hp=600,
+        shooter_heat=0,
+    ),
 }
 
 
@@ -106,6 +116,7 @@ class HotkeyDebugPublisher(Node):
         self.args = args
         self.game_pub = self.create_publisher(GameStatus, args.game_topic, 10)
         self.robot_pub = self.create_publisher(RobotStatus, args.robot_topic, 10)
+        self.armors_pub = self.create_publisher(Armors, args.armors_topic, 10)
         self.timer = self.create_timer(1.0 / max(1.0, args.rate_hz), self.publish_current)
         self.current_key = args.default_key
         self.current_preset = PRESETS[self.current_key]
@@ -135,6 +146,18 @@ class HotkeyDebugPublisher(Node):
         robot_msg.is_attacked = bool(self.current_preset.is_attacked)
         self.robot_pub.publish(robot_msg)
 
+        if self.current_key == "7":
+            armors_msg = Armors()
+            armors_msg.header.stamp = self.get_clock().now().to_msg()
+            armor = Armor()
+            armor.number = "1"
+            armor.type = "0"
+            armor.distance_to_image_center = 1.0
+            armor.pose = Pose()
+            armor.pose.orientation.w = 1.0
+            armors_msg.armors = [armor]
+            self.armors_pub.publish(armors_msg)
+
     def _print_help(self) -> None:
         print("[BT HOTKEY] 可用按键：", flush=True)
         for key, preset in PRESETS.items():
@@ -157,6 +180,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rate-hz", type=float, default=10.0)
     parser.add_argument("--game-topic", default="/game_status")
     parser.add_argument("--robot-topic", default="/robot_status")
+    parser.add_argument("--armors-topic", default="/detector/armors")
     parser.add_argument("--robot-id", type=int, default=7)
     parser.add_argument("--team-color", type=int, default=0, choices=[0, 1])
     parser.add_argument("--default-key", default="0", choices=sorted(PRESETS.keys()))

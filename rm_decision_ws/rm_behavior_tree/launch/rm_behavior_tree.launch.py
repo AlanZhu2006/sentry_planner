@@ -14,6 +14,8 @@ def generate_launch_description():
     respawn = LaunchConfiguration('respawn', default='True')
     enable_groot = LaunchConfiguration('enable_groot', default='True')
     groot_port = LaunchConfiguration('groot_port', default='1667')
+    start_goal_pose = LaunchConfiguration('start_goal_pose', default='0;0;0; 0;0;0;1')
+    end_goal_pose = LaunchConfiguration('end_goal_pose', default='10.965;-2.807;0; 0;0;0;1')
 
     bt_xml_dir = PathJoinSubstitution([bt_config_dir, style]), ".xml"
 
@@ -22,6 +24,10 @@ def generate_launch_description():
     declare_respawn = DeclareLaunchArgument('respawn', default_value='True')
     declare_enable_groot = DeclareLaunchArgument('enable_groot', default_value='True')
     declare_groot_port = DeclareLaunchArgument('groot_port', default_value='1667')
+    declare_start_goal_pose = DeclareLaunchArgument(
+        'start_goal_pose', default_value='0;0;0; 0;0;0;1')
+    declare_end_goal_pose = DeclareLaunchArgument(
+        'end_goal_pose', default_value='10.965;-2.807;0; 0;0;0;1')
 
     rm_behavior_tree_node = Node(
         package='rm_behavior_tree',
@@ -34,6 +40,8 @@ def generate_launch_description():
               'use_sim_time': use_sim_time,
               'enable_groot': enable_groot,
               'groot_port': groot_port,
+              'start_goal_pose': start_goal_pose,
+              'end_goal_pose': end_goal_pose,
             }
         ]
     )
@@ -44,5 +52,7 @@ def generate_launch_description():
         declare_respawn,
         declare_enable_groot,
         declare_groot_port,
+        declare_start_goal_pose,
+        declare_end_goal_pose,
         rm_behavior_tree_node,
     ])

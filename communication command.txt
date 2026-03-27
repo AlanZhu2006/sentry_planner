@@ -37,9 +37,18 @@ just test detect --web --send
 just test gimbal configs/sentry.yaml
 
 0.2.1 一键自瞄模式
+Specifically, in:
+
+/home/nyu/Codespace/nyush-rm-vision/configs/sentry.yaml
+
+it has:
+
+# enemy_color: "red"
+enemy_color: "blue"
 ------------------
 cd /home/nyu/Codespace/nyush-rm-control && just bridge
 
+bash /home/nyu/sentry_planner/scripts/autostart_autoaim.sh
 
 cd /home/nyu/sentry_planner
 ./start_autoaim_mode.sh
@@ -236,12 +245,21 @@ just test detect --web --send
 
 4. Planner / Nav2 侧联调
 ========================
+systemctl --user daemon-reload
+systemctl --user enable sentry_autostart.service
+systemctl --user start sentry_autostart.service
+
+bash /home/nyu/sentry_planner/scripts/autostart_fullstack.sh
+
+tail -f /home/nyu/sentry_planner/logs/autostart/sentry_bridge.log
 
 阶段 2：上真实桥接、真实裁判、真实运动
 终端 1，桥：
 cd /home/nyu/Codespace/nyush-rm-control
 just sentry-bridge 
 
+cd /home/nyu/Codespace/nyush-rm-control
+just radar --port /tmp/nyush-rm-sentry-radar
 
 终端 2，视觉，可先不开；如果要联动视觉再开：
 cd /home/nyu/Codespace/nyush-rm-vision
@@ -257,6 +275,36 @@ cd /home/nyu/nav_ws
 说明：
 - `start_robot_no_bt.sh` 现在默认会自动起 `/robot_control` keepalive
 - 否则当前 MCU 不会接管外部导航速度，现象就是 `/cmd_vel_chassis` 有值但底盘不动
+
+cd /home/nyu/nav_ws
+MAP_FILE="/home/nyu/sentry_planner/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml" \
+BT_STYLE=center_attack_fullstack \
+START_SERIAL_SENDER=1 \
+SERIAL_SENDER_DISABLE_STATUS_PUB=0 \
+START_BT=1 \
+RADAR_PTY=/tmp/nyush-rm-sentry-radar \
+START_FAKE_VEL_TRANSFORM=1 \
+./start_robot.sh
+
+cd /home/nyu/nav_ws
+MAP_FILE="/home/nyu/Desktop/map/11_map.yaml" \
+BT_STYLE=center_attack_fullstack \
+BT_START_GOAL="0.286;0.558;0; 0;0;0;1" \
+BT_END_GOAL="3.504;-0.193;0; 0;0;0;1" \
+START_SERIAL_SENDER=1 \
+SERIAL_SENDER_DISABLE_STATUS_PUB=0 \
+START_BT=1 \
+RADAR_PTY=/tmp/nyush-rm-sentry-radar \
+START_FAKE_VEL_TRANSFORM=1 \
+./start_robot.sh
+
+bash /home/nyu/sentry_planner/scripts/autostart_fullstack.sh
+
+source /opt/ros/humble/setup.zsh
+source /home/nyu/sentry_planner/install/setup.zsh
+source /home/nyu/sentry_planner/rm_decision_ws/install/setup.zsh
+ros2 topic echo /game_status
+ros2 topic echo /robot_status
 
 cd /home/nyu/nav_ws
 BT_STYLE=center_attack_fullstack \
@@ -498,3 +546,16 @@ ros2 topic hz /robot_status
 - 前提是下位机已经刷入这次新的哨兵固件
 - 还要保证当前运行的是仓库版 `serial_sender.py`
 - 如果你开了 `bt_hotkey_debug.py`，它会覆盖这两个话题
+
+
+
+
+
+
+# 1 找并停当前 bridge
+ps -ef | rg "scripts/sentry_bridge.py --port /dev/ttyACM0"
+kill 13683
+
+# 2 重新以 debug 方式启动
+cd /home/nyu/Codespace/nyush-rm-control
+SENTRY_BRIDGE_DEBUG=1 python3 scripts/sentry_bridge.py --port /dev/ttyACM0 --radar-link /tmp/nyush-rm-sentry-radar

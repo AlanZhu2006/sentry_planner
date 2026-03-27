@@ -23,24 +23,24 @@
             <ReactiveSequence>
               <GetCurrentLocation current_location="{current_location}"/>
               <IsNearGoal current_location="{current_location}"
-                          goal_pose="10.965;-2.807;0; 0;0;0;1"
+                          goal_pose="{end_goal_pose}"
                           dist_threshold="0.35"/>
             </ReactiveSequence>
             <RobotControl stop_gimbal_scan="True"
-                          chassis_spin_vel="0.5"
+                          chassis_spin_vel="1.0"
                           scan_enabled="True"
                           allow_vision_control="True"
                           search_when_target_lost="True"
-                          scan_yaw_rate_deg_s="120.0"
+                          scan_yaw_rate_deg_s="60.0"
                           search_pitch_deg="-6.0"/>
             <WhileDoElse name="EngageEnemyOnApproach">
               <IsDetectEnemy message="{armors}"/>
               <RobotControl stop_gimbal_scan="True"
-                            chassis_spin_vel="0.5"
+                            chassis_spin_vel="1.0"
                             scan_enabled="True"
                             allow_vision_control="True"
                             search_when_target_lost="True"
-                            scan_yaw_rate_deg_s="120.0"
+                            scan_yaw_rate_deg_s="60.0"
                             search_pitch_deg="-6.0"/>
               <ReactiveSequence>
                 <RobotControl stop_gimbal_scan="True"
@@ -48,11 +48,11 @@
                               scan_enabled="True"
                               allow_vision_control="True"
                               search_when_target_lost="True"
-                              scan_yaw_rate_deg_s="120.0"
+                              scan_yaw_rate_deg_s="60.0"
                               search_pitch_deg="-6.0"/>
                 <RateController hz="1">
                   <SendGoal name="CenterNearTest"
-                            goal_pose="10.965;-2.807;0; 0;0;0;1"
+                            goal_pose="{end_goal_pose}"
                             action_name="navigate_to_pose"/>
                 </RateController>
               </ReactiveSequence>
@@ -64,11 +64,11 @@
                           scan_enabled="True"
                           allow_vision_control="True"
                           search_when_target_lost="True"
-                          scan_yaw_rate_deg_s="120.0"
+                          scan_yaw_rate_deg_s="60.0"
                           search_pitch_deg="-6.0"/>
             <RateController hz="1">
               <SendGoal name="HomeRecoverFight"
-                        goal_pose="0;0;0; 0;0;0;1"
+                        goal_pose="{start_goal_pose}"
                         action_name="navigate_to_pose"/>
             </RateController>
           </ReactiveSequence>
@@ -88,7 +88,7 @@
                           scan_enabled="True"
                           allow_vision_control="True"
                           search_when_target_lost="True"
-                          scan_yaw_rate_deg_s="120.0"
+                          scan_yaw_rate_deg_s="60.0"
                           search_pitch_deg="-6.0"/>
             <ReactiveSequence>
               <RobotControl stop_gimbal_scan="True"
@@ -96,11 +96,11 @@
                             scan_enabled="True"
                             allow_vision_control="True"
                             search_when_target_lost="True"
-                            scan_yaw_rate_deg_s="120.0"
+                            scan_yaw_rate_deg_s="60.0"
                             search_pitch_deg="-6.0"/>
               <RateController hz="1">
                 <SendGoal name="HomeRecoverScan"
-                          goal_pose="0;0;0; 0;0;0;1"
+                          goal_pose="{start_goal_pose}"
                           action_name="navigate_to_pose"/>
               </RateController>
             </ReactiveSequence>

@@ -1,0 +1,14 @@
+○ sentry_autostart.service - Sentry Fullstack Autostart
+     Loaded: loaded (/home/nyu/.config/systemd/user/sentry_autostart.service; enabled; vendor preset: enabled)
+     Active: inactive (dead) since Fri 2026-03-27 16:40:33 CST; 3min 7s ago
+    Process: 2766 ExecStart=/bin/bash /home/nyu/sentry_planner/scripts/autostart_fullstack.sh (code=exited, status=0/SUCCESS)
+   Main PID: 2766 (code=exited, status=0/SUCCESS)
+        CPU: 4.875s
+
+Mar 27 16:40:30 nyush-nuc systemd[2475]: Started Sentry Fullstack Autostart.
+Mar 27 16:40:30 nyush-nuc bash[2766]: [autostart] xterm not found; falling back to background logs.
+Mar 27 16:40:30 nyush-nuc bash[2766]: [autostart] Starting sentry_bridge...
+Mar 27 16:40:31 nyush-nuc bash[2766]: [autostart] Starting vision detect (web+send)...
+Mar 27 16:40:33 nyush-nuc bash[2766]: [autostart] Starting nav + BT...
+Mar 27 16:40:33 nyush-nuc bash[2766]: [autostart] Done. Logs: /home/nyu/sentry_planner/logs/autostart
+Mar 27 16:40:33 nyush-nuc systemd[2475]: sentry_autostart.service: Consumed 4.875s CPU time.
