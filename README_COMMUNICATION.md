@@ -1,8 +1,26 @@
 # NYUSH 哨兵通讯链路与协议说明
 
-最后更新：2026-03-21
+最后更新：2026-04-11
 
 本文专门整理 NYUSH 哨兵当前的通讯链路、协议格式、桥接方式、启动顺序和排障方法。
+
+## 0. 文档定位（五文分工）
+
+| 文档 | 职责 |
+|------|------|
+| [README.md](README.md) | **中央索引**：一页总览、架构简图、编译顺序、最短启动 |
+| **本文** | **通讯与协议全文**：`sentry_bridge`、SP/SX/ST、PTY、串口帧、`serial_sender`、`bt_comm_adapter`、话题表、排障；**§15.3** 实机通讯侧摘要 |
+| [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md) | **行为树全文**：XML、节点、`RobotControl` 字段语义与战术（**谁发 `/robot_control`、发什么**见行为树侧） |
+| [README_LIDAR.md](README_LIDAR.md) | **激光雷达 + SLAM + Nav2**：**§6.4 Gazebo Sim2Real**、驱动、FAST-LIO、Nav2 参数与实车现象 |
+| [README_COMMANDS.md](README_COMMANDS.md) | **命令与数据流**：[§1 四路径](README_COMMANDS.md#1-完整数据链路与职责划分)、bridge 自动选口、**§4** 环境变量、**§12 实机**终端与 `ros2 topic pub` |
+
+**如何选读：** 协议字节、PTY、谁占 `/dev/ttyACM0`、sender 话题 → **本文**；`RobotControl` 在战术里怎么用 → [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md)；**端到端谁连谁**的总图 → [README_COMMANDS.md §1](README_COMMANDS.md#1-完整数据链路与职责划分)；**分阶段实机步骤与检查命令** → [README_COMMANDS.md §12](README_COMMANDS.md#12-实机联调)。
+
+**与另文的边界：** **帧格式、CRC、0x5C/0x5D** 等以本文 **§5～§8** 为权威；**`bt_comm_adapter` 如何把 `chassis_spin_vel` 并进 `/cmd_vel_chassis_bt`** 以本文 **§11** 为权威实现说明，与 [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md) **§17**（决策侧数据流示意）互补。
+
+命令速查还可配合仓库根目录的 `communication command.txt`、`mid360 command.txt`（原理以 [README_COMMANDS.md](README_COMMANDS.md) 为准）。
+
+---
 
 这份文档覆盖 4 个代码源：
 
@@ -476,16 +494,20 @@ Nav2 -> /cmd_vel -> fake_vel_transform -> /cmd_vel_chassis -> bt_comm_adapter.py
 
 如果要接桥接雷达口，当前最合适的输入就是 `/cmd_vel_chassis_bt`。
 
-当前默认还额外做了一件事：
+**角速度策略（与 `scripts/bt_comm_adapter.py` 一致，2026-04 起）：**
 
-- `fake_vel_transform` 默认忽略 Nav2 原始 `wz`
-- `bt_comm_adapter.py` 默认也忽略 `/cmd_vel_chassis` 自带的 `angular.z`
-- 也就是说，当前链路默认先只走 `vx/vy`
-- 如果后面需要恢复 Nav2 角速度，再把 `use_nav_wz` / `use_nav_cmd_wz` 打开
+- `fake_vel_transform` 一侧可按队内配置处理 Nav2 原始 `wz`（见导航/Lidar 文档）。
+- **`bt_comm_adapter.py` 在合成 `/cmd_vel_chassis_bt` 时，不把 `/cmd_vel_chassis.angular.z` 转发到输出**；输出的 **`angular.z` 仅由 `/robot_control.chassis_spin_vel`** 写入。这样 Nav2 规划中的旋转不会与「行进不旋、驻守再旋」的哨兵策略抢同一个通道。
+- 若将来要让 Nav2 直接控旋转，需**改 Python 节点逻辑**（例如合并两路角速度或恢复透传），而不是仅改 launch 参数。
 
 ### 11.2 决策到视觉
 
-当前行为树订阅：
+**说明：** 下面列出的是行为树代码中**已注册订阅插件**所能对接的话题。具体某棵 XML **是否使用**某一订阅，取决于树内有没有对应 `Sub*` 节点。
+
+- 当前默认 **`center_attack_simple`** 仅使用 **`/game_status`** 与 **`/robot_status`**（见行为树文档）。
+- 旧树（如 **`retreat_attack_left`**）通常会再依赖 **`/detector/armors`**、**`/all_robot_hp`** 等。
+
+行为树侧可能订阅的话题包括：
 
 - `/detector/armors`
 - `/game_status`
@@ -773,10 +795,12 @@ cd ~/Desktop
 ./Groot2-v1.9.0-x86_64.AppImage
 ```
 
-然后：
+**AppImage 版本号**以你 `~/Desktop` 上实际文件名为准（与 **[mid360 command.txt](mid360%20command.txt)** §13 一致）。然后：
 
 - 打开 `/home/nyu/sentry_planner/rm_decision_ws/rm_behavior_tree/config/Project.btproj`
-- 连接 `127.0.0.1:1667`
+- **Monitor** 连接 `127.0.0.1:1667`（须 `enable_groot:=true`，见 [README_BEHAVIOR_TREE_FLOW.md §18.1](README_BEHAVIOR_TREE_FLOW.md#181-groot2-建议流程)）
+
+**整条 Gazebo + Nav2 + BT 的推荐顺序**（Sim2Real 第一步）见 [README_LIDAR.md §6.4](README_LIDAR.md#nyush-gazebo-sim2real)；逐步 `topic pub` 见 **mid360 command.txt**。
 
 ### 12.6 实机联调时最常看的检查点
 
@@ -1084,13 +1108,20 @@ just radar --port <Radar PTY>
 - 用软链接
 - 或桥启动后立即把 PTY 写入你们自己的启动脚本/环境变量
 
-### 15.3 视觉到决策的“目标类别”链并未真正接入行为树
+### 15.3 实机联调（通讯视角摘要）
+
+- **推荐链路**仍是：`视觉 ↔ Vision PTY ↔ sentry_bridge ↔ MCU`、`planner/nav ↔ Radar PTY ↔ …`；**真实 USB 串口只给 bridge**（见 **§1**）。  
+- **`start_robot.sh` 不会自动启动 bridge**；**`serial_sender`** 需指向 **当前 Radar PTY**（或由 **`START_SERIAL_SENDER` + `RADAR_PTY`** 一并带起，见 [README_COMMANDS.md](README_COMMANDS.md) **§4、§12**）。  
+- **`/cmd_vel_chassis_bt`** 与 **`/robot_control`**（含 **`scan_*`、`allow_vision_control`、`chassis_spin_vel`** 等）经 **sender / A3** 可到 **MCU**；分阶段自检、伪造裁判、`navigate_to_pose` 前提见 [README_COMMANDS.md §12](README_COMMANDS.md#12-实机联调)。  
+- **视觉**：`nyush-rm-vision` 的 **`com_port` 必须指向 bridge 打印的 Vision PTY**（勿直连 ACM0）。
+
+### 15.4 视觉到决策的“目标类别”链并未真正接入行为树
 
 当前行为树主要消费的是 `/detector/armors` 的“非空”信息。
 
 视觉虽然能发 `auto_aim_target_pos`，而且第四个量里已经带了目标类别，但当前 `sentry_planner` 还没有真正订阅并使用它。
 
-### 15.4 `rm_serial_driver` 和桥接版不要同时上
+### 15.5 `rm_serial_driver` 和桥接版不要同时上
 
 两者的定位不同：
 
@@ -1098,6 +1129,16 @@ just radar --port <Radar PTY>
 - `sentry_bridge.py` 是新单口双路桥接栈
 
 同时运行只会互抢串口。
+
+### 15.6 文档交叉引用（通讯以外的细节去哪看）
+
+| 主题 | 文档 |
+|------|------|
+| 行为树 XML、`SendGoal`、`RobotControl` 字段与战术 | [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md) |
+| 端到端四路径、环境变量、地图文件、实机步骤 | [README_COMMANDS.md](README_COMMANDS.md)（**§1、§4、§12、§13**） |
+| Gazebo RMUL2026、Sim2Real、`bringup_sim` | [README_LIDAR.md §6.4](README_LIDAR.md#nyush-gazebo-sim2real)、[mid360 command.txt](mid360%20command.txt) |
+| Mid360、FAST-LIO、Nav2、实机定位现象 | [README_LIDAR.md](README_LIDAR.md)（**§6.4** 仿真，**§10.8** 实机） |
+| 一页总览 | [README.md](README.md) |
 
 ## 16. 推荐的下一步收敛方向
 

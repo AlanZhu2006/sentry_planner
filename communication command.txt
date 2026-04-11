@@ -1,16 +1,20 @@
 NYUSH sentry communication commands
-最后更新：2026-03-20
+最后更新：2026-04-11
 
-当前这一次 bridge 输出
+详细原理、参数含义、数据流、脚本与 BT/视觉/导航/通讯对照表见：
+  README_COMMANDS.md  （仓库根目录，优先阅读）
+实机分阶段联调、终端分工、伪造裁判、检查清单：README_COMMANDS.md §12
+
+下面「当前这一次 bridge 输出」仅为示例；USB 插拔后设备名会变，请以当次终端打印为准。
 -----------------------
-MCU serial : /dev/ttyACM0
+MCU serial : /dev/ttyACM0   # 示例：也可能是 ttyACM1 等
 Vision PTY : /dev/pts/2
 Radar PTY  : /dev/pts/3
 
 注意
 ----
-1. 真实口 /dev/ttyACM0 只能给 sentry_bridge.py 占用。
-2. 视觉程序连 Vision PTY；雷达/导航程序连 Radar PTY。
+1. 真实 USB 口只能给 sentry_bridge.py 占用；设备名不要写死，启动 bridge 时用自动选口（见 §1.2）。
+2. 视觉程序连 Vision PTY；雷达/导航程序连 Radar PTY（或稳定软链接 /tmp/nyush-rm-sentry-radar）。
 3. bridge 每次重启，/dev/pts/N 都可能变化；每次都以 bridge 当次打印结果为准。
 4. 建议先把车架空，再做 one-shot / keyboard 测试。
 5. 当前默认已进入“只用 vx vy”调试模式：Nav2 自带 `wz` 默认会被忽略。
@@ -24,7 +28,9 @@ Radar PTY  : /dev/pts/3
 cd /home/nyu/Codespace/nyush-rm-control
 
 just bridge
-just sentry-bridge --port /dev/ttyACM0
+just sentry-bridge
+# 推荐不写 --port：sentry_bridge 会自动枚举并选择 MCU 串口（插拔后可能是 ttyACM1 等）
+# 仅当多设备冲突时再： just sentry-bridge --port /dev/ttyACM1
 just logger
 just logger-cli
 just vision --port /dev/pts/2
@@ -103,15 +109,18 @@ error: Justfile does not contain recipe `test`
 ------------
 python3 /home/nyu/Codespace/nyush-rm-control/scripts/sentry_bridge.py --self-test
 
-1.2 启动 bridge
----------------
-python3 /home/nyu/Codespace/nyush-rm-control/scripts/sentry_bridge.py --port /dev/ttyACM0
+1.2 启动 bridge（自动选口，推荐）
+---------------------------------
+cd /home/nyu/Codespace/nyush-rm-control
+python3 scripts/sentry_bridge.py
+# 或
+just sentry-bridge
 
 1.3 just 别名写法
 -----------------
 cd /home/nyu/Codespace/nyush-rm-control
 just sentry-bridge --self-test
-just sentry-bridge --port /dev/ttyACM0
+just sentry-bridge
 
 1.4 查看是谁占用了真实串口
 ---------------------------
@@ -251,7 +260,21 @@ systemctl --user start sentry_autostart.service
 
 bash /home/nyu/sentry_planner/scripts/autostart_fullstack.sh
 
+ps -ef | rg 'sentry_bridge.py|just test detect|serial_sender.py|fastlio_mapping|livox_ros_driver2|nav2|rm_behavior_tree|bt_comm_adapter'
 tail -f /home/nyu/sentry_planner/logs/autostart/sentry_bridge.log
+tail -f /home/nyu/sentry_planner/logs/autostart/vision_detect.log
+tail -f /home/nyu/sentry_planner/logs/autostart/nav_bt.log
+
+4.0 下面各段在 README_COMMANDS.md 中的章节
+------------------------------------------
+- bridge 自动选口、勿写死 ttyACM0        -> README_COMMANDS.md §2
+- 视觉 detect --web --send 与 BT 关系    -> §3
+- nav_ws/start_robot.sh 一长串环境变量  -> §4
+- ros2 topic echo game/robot_status     -> §5
+- watch_center_attack / bt_hotkey_debug -> §6
+- rotate_pcd / pcd2pgm / map_saver_cli  -> §7
+- autostart_fullstack.sh                -> §8
+- 脚本与 BT/视觉/导航/通讯对照表        -> §9
 
 阶段 2：上真实桥接、真实裁判、真实运动
 终端 1，桥：
@@ -264,6 +287,8 @@ just radar --port /tmp/nyush-rm-sentry-radar
 终端 2，视觉，可先不开；如果要联动视觉再开：
 cd /home/nyu/Codespace/nyush-rm-vision
 just test detect --web --send
+# --web 默认 http://127.0.0.1:8888 看检测；--send 经 Vision PTY 发 SP 到 MCU。
+# 与 BT：BT 经 RobotControl/SX 控扫描/自瞄开关；简单树可不订阅 /detector/armors。详见 README_COMMANDS §3。
 
 终端 3，主入口，起 Nav2 + adapter + BT(center_attack_fullstack) + serial_sender：
 cd /home/nyu/sentry_planner
@@ -289,16 +314,20 @@ START_FAKE_VEL_TRANSFORM=1 \
 cd /home/nyu/nav_ws
 MAP_FILE="/home/nyu/Desktop/map/11_map.yaml" \
 BT_STYLE=center_attack_fullstack \
-BT_START_GOAL="0.286;0.558;0; 0;0;0;1" \
-BT_END_GOAL="3.504;-0.193;0; 0;0;0;1" \
+BT_START_GOAL="0.407;0.130;0; 0;0;0;1" \
+BT_END_GOAL="1.083;0.767;0; 0;0;0;1" \
 START_SERIAL_SENDER=1 \
 SERIAL_SENDER_DISABLE_STATUS_PUB=0 \
 START_BT=1 \
 RADAR_PTY=/tmp/nyush-rm-sentry-radar \
 START_FAKE_VEL_TRANSFORM=1 \
 ./start_robot.sh
+# 各变量含义见 README_COMMANDS.md §4
 
 bash /home/nyu/sentry_planner/scripts/autostart_fullstack.sh
+# 场上自启：重启 user bridge 服务 + vision + nav_ws/start_robot（含 BT、sender）。见 README_COMMANDS §8。
+
+# 串口终端调试请用实际设备名（勿照抄）例如： screen /dev/ttyACM0 115200
 
 source /opt/ros/humble/setup.zsh
 source /home/nyu/sentry_planner/install/setup.zsh
@@ -351,11 +380,11 @@ cd ~/nav_ws
 source install/setup.zsh
 ros2 launch pcd2pgm pcd2pgm_launch.py
 
-?? nav2 ????:
+# 保存 Nav2 地图（yaml + pgm）到桌面 map 目录；MAP_FILE 指向该 yaml。PCD/PGM/YAML 分工与赛场 RMUL2026、换图改 BT 起终点见 README_COMMANDS.md §4.4、§7.4
 cd ~/Desktop/map
 ros2 run nav2_map_server map_saver_cli -f 11_map
 
-#在保存完图片至 11_map后，运行一下指令（只能在VNC的GUI上面），会自动打开相应figure，点击figure上面的点可以得到相对于原点的坐标
+# 保存完 11_map 后：需 GUI/VNC。打开地图窗口，点击图上一点可读相对地图原点的 x,y，用于 BT_START_GOAL/BT_END_GOAL 或 XML 里写死的 SendGoal（换图必重标）
 python3 ~/nav_ws/map_point_picker.py ~/Desktop/map/11_map.yaml
 
 4.1 启动 sentry_planner（当前推荐）

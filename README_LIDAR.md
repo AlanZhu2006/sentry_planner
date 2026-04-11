@@ -6,7 +6,35 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 > **Autonomous navigation solution for RoboMaster Sentry robot using LiDAR SLAM and Nav2**  
-> **基于激光雷达SLAM与Nav2的RoboMaster哨兵机器人自主导航解决方案**
+> **基于激光雷达SLAM与Nav2的RoboMaster哨兵机器人自主导航解决方案**  
+> **NYUSH 增补（§0、§6.4 Sim2Real/Gazebo/Groot2、§10.8）：** 2026-04-11
+
+---
+
+## 0. 文档定位（五文分工）
+
+| 文档 | 职责 |
+|------|------|
+| [README.md](README.md) | **中央索引**：一页总览、架构简图、编译顺序、最短启动 |
+| [README_COMMUNICATION.md](README_COMMUNICATION.md) | **通讯与协议全文**：`sentry_bridge`、PTY、`serial_sender`、`bt_comm_adapter`、协议帧 |
+| [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md) | **行为树全文**：XML、`SendGoal`/`RobotControl`、调试脚本 |
+| **本文** | **激光雷达 + SLAM + Nav2**：Mid360、FAST-LIO、`my_nav2_params`、**§6.4 Gazebo（Sim2Real 推荐第一步）**、实车 launch、TF、建图、排障；[**§10.8 实机导航前提**](#108-nyush-实机导航联调要点) |
+| [README_COMMANDS.md](README_COMMANDS.md) | **命令与数据流**：**§7** 建图命令（`rotate_pcd`/`pcd2pgm`/`map_saver_cli`）、**§4.4** 地图文件含义、**§12** 实机联调 |
+
+**如何选读：** **Gazebo、RMUL2026、`bringup_sim`、Sim2Real** → **本文 §6.4** + [mid360 command.txt](mid360%20command.txt)；雷达不亮、点云、FAST-LIO、Nav2 参数、代价地图、TF → **本文**其余章节；**具体 shell 与 `MAP_FILE`** → [README_COMMANDS.md §7、§4.4](README_COMMANDS.md)；**行为树 / Groot2** → [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md)；**串口与 PTY** → [README_COMMUNICATION.md](README_COMMUNICATION.md)。
+
+**与另文的边界：** 英文 **§1～§9** 保留原北极熊栈的通用说明；**NYUSH 实车闭环前提**以 **§10.8** 为入口，并与 [README_COMMANDS.md §12](README_COMMANDS.md#12-实机联调) 一致。实车一键 **`sentry_planner/start_robot.sh`** 会起 Mid360、FAST-LIO、`pointcloud_to_laserscan`、Nav2 等；**MCU 串口**仍只经 **bridge + `serial_sender`**，见通讯文档。
+
+### NYUSH：推荐 Sim2Real（仿真 → 实机）
+
+队内默认 workflow：**先在 Gazebo RMUL2026 + Nav2 里把参数、`center_attack_simple` 去中心/守中/回家跑顺，再切 Mid360 + FAST-LIO 实车**。
+
+| 阶段 | 去哪看 |
+|------|--------|
+| **Gazebo 一条 launch、`run_center_attack_debug_session`、伪造 `/game_status` 等逐步命令** | 仓库根目录 **[mid360 command.txt](mid360%20command.txt)**（可复制） |
+| **launch 参数含义、与实车差异** | 本文 **§6.4**；包内长篇见 [rm_navigation_ws/README.md](rm_navigation_ws/README.md) |
+| **行为树 + Groot2 端口、`Project.btproj`** | [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md) **§18.1** |
+| **实机多终端、bridge、PTY** | [README_COMMUNICATION.md](README_COMMUNICATION.md)、[README_COMMANDS.md §12](README_COMMANDS.md#12-实机联调) |
 
 ---
 
@@ -19,11 +47,12 @@
 | [3. Hardware Configuration](#3-hardware-configuration--硬件配置) | 硬件配置 |
 | [4. Software Stack](#4-software-stack--软件栈) | 软件栈 |
 | [5. Installation Guide](#5-installation-guide--安装指南) | 安装指南 |
-| [6. Quick Start](#6-quick-start--快速启动) | 快速启动 |
+| [6. Quick Start](#6-quick-start--快速启动) | 快速启动（含 **§6.4** NYUSH Gazebo） |
 | [7. Configuration](#7-configuration--配置说明) | 配置说明 |
 | [8. Performance Metrics](#8-performance-metrics--性能指标) | 性能指标 |
 | [9. Troubleshooting](#9-troubleshooting--故障排除) | 故障排除 |
-| [10. Development Notes](#10-development-notes--开发笔记) | 开发笔记 |
+| [10. Development Notes](#10-development-notes--开发笔记) | 开发笔记（含 **§10.8** NYUSH 实机导航前提） |
+| [10.8 NYUSH 实机导航联调要点](#108-nyush-实机导航联调要点) | 实机：`map→odom→base_link`、`navigate_to_pose`、场地与地图一致 |
 | [11. Future Plans](#11-future-plans--未来计划) | 未来计划 |
 | [12. References](#12-references--参考资料) | 参考资料 |
 
@@ -394,6 +423,55 @@ ros2 launch pcd2pgm pcd2pgm_launch.py
 # 5. Save map / 保存地图
 ros2 run nav2_map_server map_saver_cli -f /home/nyu/Desktop/map/my_map
 ```
+
+<a id="nyush-gazebo-sim2real"></a>
+
+### 6.4 NYUSH / Gazebo 仿真（RMUL2026 + Nav2，Sim2Real 第一步）
+
+**环境：** ROS 2 Humble，**Gazebo Classic 11**（与 [README.md](README.md) 一致）。仿真里用 **Gazebo 里程计 + AMCL**，无需插真实 Mid360，适合先把 **Nav2 代价地图、速度、`SendGoal`** 与行为树分支调稳，再换实车。
+
+**终端 1 — 起世界 + Nav2 + RViz：**
+
+```bash
+cd /path/to/sentry_planner/rm_navigation_ws
+source ~/nav_ws/install/setup.bash    # 或你本机 nav 工作空间
+source install/setup.bash
+ros2 launch rm_nav_bringup bringup_sim.launch.py \
+  world:=RMUL2026 \
+  mode:=nav \
+  localization:=amcl \
+  use_gazebo_odom:=true \
+  nav_rviz:=True
+```
+
+**终端 2 — 行为树长期调试会话（保活 `bt_comm_adapter` + `rm_behavior_tree` + `watch_center_attack_state.py`）：**
+
+```bash
+bash /path/to/sentry_planner/scripts/run_center_attack_debug_session.sh
+```
+
+脚本默认 **`USE_SIM_TIME=True`**，与 Gazebo 一致。若需 **Groot2 远程监视**，请用 launch 参数 **`enable_groot:=true`**（默认端口 **1667**，见 [README_BEHAVIOR_TREE_FLOW.md §18.1](README_BEHAVIOR_TREE_FLOW.md#181-groot2-建议流程)）。
+
+**终端 3 — 伪造裁判、测去中心 / 守中 / 回家：** 直接复制 **[mid360 command.txt](mid360%20command.txt)** 中 **§4～§8** 的 `ros2 topic pub` 示例；期望现象（`APPROACH_CENTER`、`CENTER_HOLD_ATTACK`、`HOME_RECOVER` 等）该文件 §4～§8 已写。
+
+**与实车的差异简述：**
+
+| 项目 | Gazebo（本小节） | 实车（见 §10.8、[README_COMMANDS.md §12](README_COMMANDS.md#12-实机联调)） |
+|------|------------------|------------------------------------------------------------------------|
+| 定位 | `use_gazebo_odom:=true` + **AMCL** | FAST-LIO / `bringup_real` 等 |
+| 时间 | **`use_sim_time`** | 一般 `use_sim_time:=false` |
+| 底盘速度下 MCU | 常只在 ROS 环调试；若要练 **Radar PTY + sender** | **bridge + `serial_sender`** |
+
+**可选 — Groot2 图形监看（与 mid360 command.txt §13 一致）：**
+
+```bash
+cd ~/Desktop
+./Groot2-v1.9.0-x86_64.AppImage
+```
+
+在 Groot2 中打开 **`rm_decision_ws/rm_behavior_tree/config/Project.btproj`**，Monitor 连接 **`127.0.0.1:1667`**（若改过 `groot_port` 以 launch 为准）。**AppImage 版本号**随下载包变化，以你 `~/Desktop` 上实际文件名为准。
+
+更多仿真地图、Docker、历史说明见 **[rm_navigation_ws/README.md](rm_navigation_ws/README.md)**。
 
 ---
 
@@ -794,6 +872,26 @@ ros2 run nav2_map_server map_saver_cli -f my_map
 - 20次尝试成功率 ≥ 90%
 
 > 📋 中期考核已完成，该文档会持续更新
+
+---
+
+### 10.8 NYUSH 实机导航联调要点
+
+与 **「只有通讯通了」** 不同，**导航闭环**还要求环境与你加载的 **2D 地图**一致（赛场 **`RMUL2026`**、自建图 **`11_map`** 等；**换图与坐标**见 [README_COMMANDS.md](README_COMMANDS.md) **§4.4**）。**推荐**先在 **§6.4 Gazebo** 用同一张 **`RMUL2026`** 逻辑调通 `navigate_to_pose` 与行为树分支，再进本节实机项。
+
+**必须稳定的一条链：**
+
+- **`map` → `odom` → `base_link`**（以及雷达输入、定位输出不乱跳）
+
+**实机上至少满足：**
+
+- **`navigate_to_pose` action 在线**（否则行为树的 **`SendGoal`** 无法闭环）；上电后可用 `ros2 action list | grep navigate_to_pose` 自查（更多步骤见 [README_COMMANDS.md §12](README_COMMANDS.md#12-实机联调)）。  
+- **RViz** 中机器人位姿与地图大致重合，**局部 costmap** 无持续异常膨胀。  
+- **`Home`、中心守点**等在 **占用栅格上为自由空间**；地图原点、朝向与场地不一致时，常出现「有规划但车往错向走或不愿走」——易被误判为 Nav2 坏了。
+
+**阶段上：** 可在 **台架 / 小场地** 先验证定位与短距离导航，再进 **完整场地** 调去中心、守中、回家；无匹配场地时不要过早断言「实机导航已完全 OK」。
+
+**相关文档：** 行为树何时发导航目标 → [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md)；串口/桥/裁判话题 → [README_COMMUNICATION.md](README_COMMUNICATION.md)；「该读哪份 README」总表 → [README_COMMANDS.md §13](README_COMMANDS.md#13-四专题分工速查我该打开哪份-readme)。
 
 ---
 

@@ -1,3 +1,8 @@
+NYUSH 调试备忘（Gazebo Sim2Real + 实机）
+========================================
+**推荐顺序：** 先按 **§1～§8** 在 **Gazebo RMUL2026** 调 Nav2 + `center_attack_simple`，再上实车。  
+**原理与 launch 说明：** [README_LIDAR.md](README_LIDAR.md) **§6.4**（含 Groot2 AppImage）、**§10.8**；行为树见 [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md)；实机终端见 [README_COMMANDS.md §12](README_COMMANDS.md#12-实机联调)。
+
 CURRENT DEBUG FLOW
 ==================
 see pointcloud:
@@ -15,7 +20,7 @@ cd ~/nav_ws
 source install/setup.bash
 ros2 launch pcd2pgm pcd2pgm_launch.py
 
-?? nav2 ????:
+# 保存 Nav2 地图（实机/离线建图后）；详述见 README_COMMANDS.md §7
 cd ~/Desktop/map
 ros2 run nav2_map_server map_saver_cli -f 11_map
 
@@ -179,10 +184,12 @@ bash ~/sentry_planner/scripts/run_behavior_chain_test.sh \
   --require-center --center-timeout 60
 
 
-13. 可选：开 Groot2
-------------------
+13. 可选：开 Groot2（当前队内：桌面 AppImage；版本号随下载包而变）
+-------------------------------------------------------------------
 cd ~/Desktop
 ./Groot2-v1.9.0-x86_64.AppImage
+# 打开 rm_decision_ws/rm_behavior_tree/config/Project.btproj → Monitor → 127.0.0.1:1667
+# 须在 rm_behavior_tree launch 里 enable_groot:=true（见 README_BEHAVIOR_TREE_FLOW.md §18.1）
 
 
 KEY POINTS
