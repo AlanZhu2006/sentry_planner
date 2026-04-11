@@ -12,16 +12,13 @@ LOG_BRIDGE="$LOG_DIR/sentry_bridge.log"
 LOG_VISION="$LOG_DIR/vision_detect.log"
 LOG_NAV="$LOG_DIR/nav_bt.log"
 
- : >"$LOG_BRIDGE"
  : >"$LOG_VISION"
  : >"$LOG_NAV"
 
 echo "[autostart] Cleaning previous processes..."
-pkill -f sentry_bridge.py >/dev/null 2>&1 || true
 pkill -f auto_aim_camera_test >/dev/null 2>&1 || true
 pkill -f "just test detect --web --send" >/dev/null 2>&1 || true
 pkill -f start_robot.sh >/dev/null 2>&1 || true
-rm -f /tmp/nyush-rm-sentry-bridge-ttyACM*.lock >/dev/null 2>&1 || true
 rm -f /tmp/nyush-rm-sentry-vision /tmp/nyush-rm-sentry-radar >/dev/null 2>&1 || true
 sleep 1
 
@@ -51,8 +48,8 @@ cleanup_nav_bt_processes() {
 }
 
 if command -v xterm >/dev/null 2>&1 && [ -n "${DISPLAY:-}" ] && [ -f "${XAUTHORITY:-$HOME/.Xauthority}" ]; then
-  echo "[autostart] Starting sentry_bridge in xterm..."
-  xterm -T "sentry_bridge" -e bash -c "$ROS_SETUP; $PLANNER_SETUP; cd /home/nyu/Codespace/nyush-rm-control && just sentry-bridge; read -r -p 'Press Enter to close...'" &
+  echo "[autostart] Restarting sentry_bridge.service..."
+  systemctl --user restart sentry_bridge.service
 
   wait_for_vision_link
 
@@ -67,6 +64,8 @@ if command -v xterm >/dev/null 2>&1 && [ -n "${DISPLAY:-}" ] && [ -f "${XAUTHORI
   xterm -T "nav_bt" -e bash -c "$ROS_SETUP; $PLANNER_SETUP; $DECISION_SETUP; cd /home/nyu/nav_ws && \
 MAP_FILE=\"/home/nyu/sentry_planner/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml\" \
 BT_STYLE=center_attack_fullstack \
+BT_START_GOAL=\"-0.655;0.543;0; 0;0;0;1\" \
+BT_END_GOAL=\"-5.472;3.571;0; 0;0;0;1\" \
 START_SERIAL_SENDER=1 \
 SERIAL_SENDER_DISABLE_STATUS_PUB=0 \
 START_BT=1 \
@@ -75,9 +74,8 @@ START_FAKE_VEL_TRANSFORM=1 \
 ./start_robot.sh; read -r -p 'Press Enter to close...'" &
 else
   echo "[autostart] xterm not found; falling back to background logs."
-  echo "[autostart] Starting sentry_bridge..."
-  nohup env -u BASH_ENV -u ZDOTDIR bash -c "$ROS_SETUP; $PLANNER_SETUP; echo \"[autostart] ROS_DISTRO=\${ROS_DISTRO:-}\"; command -v just; cd /home/nyu/Codespace/nyush-rm-control && just sentry-bridge" \
-    >"$LOG_BRIDGE" 2>&1 &
+  echo "[autostart] Restarting sentry_bridge.service..."
+  systemctl --user restart sentry_bridge.service
 
   wait_for_vision_link
 
@@ -93,6 +91,8 @@ else
   nohup env -u BASH_ENV -u ZDOTDIR bash -c "$ROS_SETUP; $PLANNER_SETUP; $DECISION_SETUP; echo \"[autostart] ROS_DISTRO=\${ROS_DISTRO:-}\"; command -v just; cd /home/nyu/nav_ws && \
 MAP_FILE=\"/home/nyu/sentry_planner/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml\" \
 BT_STYLE=center_attack_fullstack \
+BT_START_GOAL=\"-0.655;0.543;0; 0;0;0;1\" \
+BT_END_GOAL=\"-5.472;3.571;0; 0;0;0;1\" \
 START_SERIAL_SENDER=1 \
 SERIAL_SENDER_DISABLE_STATUS_PUB=0 \
 START_BT=1 \
