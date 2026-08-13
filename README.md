@@ -13,6 +13,13 @@
 
 </div>
 
+<p align="center">
+  <img src="media/3d84443999c433efad2fab8b2e46e04c.jpg" alt="NYUSH Robotics 哨兵机器人实机" width="49%">
+  <img src="media/d7194a604fb89e06cd03e813ed6bff2d.jpg" alt="NYUSH Robotics 哨兵机器人现场联调" width="49%">
+</p>
+
+<p align="center"><sub>NYUSH Robotics 哨兵机器人与现场联调</sub></p>
+
 ## 项目概览
 
 `nyush_rm_sentry`（原 `sentry_planner`）是 **NYUSH Robotics** 的哨兵上位机规划与系统集成仓库。项目基于深圳北理莫斯科大学北极熊战队开源栈改造，将激光雷达定位、Nav2 导航、BehaviorTree.CPP 决策，以及 `nyush-rm-control` / `nyush-rm-vision` 的桥接与串口通信整合为一套完整工作流。

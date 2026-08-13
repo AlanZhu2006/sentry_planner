@@ -1,5 +1,12 @@
 # NYUSH 哨兵：常用命令与数据流说明
 
+<div align="center">
+
+[![简体中文](https://img.shields.io/badge/%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-%E5%BD%93%E5%89%8D-0969da?style=for-the-badge)](README_COMMANDS.md)
+[![English](https://img.shields.io/badge/English-Switch-2ea44f?style=for-the-badge)](README_COMMANDS_EN.md)
+
+</div>
+
 最后更新：2026-04-11  
 
 本文与 [`communication command.txt`](communication%20command.txt) 配合使用：**这里写清原理、数据流与各参数含义**；`communication command.txt` 侧重**可复制命令片段**。协议细节仍以 [`README_COMMUNICATION.md`](README_COMMUNICATION.md) 为准。

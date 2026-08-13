@@ -1,5 +1,12 @@
 # 当前行为树流程图
 
+<div align="center">
+
+[![简体中文](https://img.shields.io/badge/%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-%E5%BD%93%E5%89%8D-0969da?style=for-the-badge)](README_BEHAVIOR_TREE_FLOW.md)
+[![English](https://img.shields.io/badge/English-Switch-2ea44f?style=for-the-badge)](README_BEHAVIOR_TREE_FLOW_EN.md)
+
+</div>
+
 最后更新：2026-04-11
 
 ## 0. 文档定位（五文分工）
