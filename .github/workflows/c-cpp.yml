@@ -1,0 +1,25 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        robot: [infantry, hero, sentry]
+
+    steps:
+      - uses: carlosperate/arm-none-eabi-gcc-action@v1
+      - run: arm-none-eabi-gcc --version
+      
+      - uses: actions/checkout@v3
+      - name: build (${{ matrix.robot }})
+        run: make -j12 ROBOT_TYPE=${{ matrix.robot }}
+      

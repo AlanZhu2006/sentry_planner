@@ -1,0 +1,27 @@
+{
+    "files.associations": {
+        "stm32f4xx_hal_def.h": "c",
+        "bsp_usb.h": "c",
+        "usb_device.h": "c",
+        "usbd_cdc.h": "c",
+        "usbd_conf.h": "c",
+        "usbd_desc.h": "c",
+        "usbd_cdc_if.h": "c"
+    },
+
+    // ==================== Makefile Tools 跨平台配置 ====================
+    "makefile.makePath.osx": "/usr/bin/make",
+    "makefile.makePath.linux": "/usr/bin/make",
+    "makefile.makePath.windows": "mingw32-make",
+    "makefile.makePath": "/usr/bin/make",
+
+    // ==================== C/C++ 配置 ====================
+    "C_Cpp.default.compilerPath": "/opt/homebrew/bin/arm-none-eabi-gcc",
+    "C_Cpp.default.intelliSenseMode": "gcc-arm",
+
+    // ==================== 编辑器配置 ====================
+    "files.encoding": "utf8",
+    "editor.formatOnSave": false,
+    "files.eol": "\n",
+    "cmake.ignoreCMakeListsMissing": true
+}

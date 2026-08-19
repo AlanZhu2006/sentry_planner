@@ -1,0 +1,115 @@
+{
+    // VSCode tasks configuration
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    "version": "2.0.0",
+
+    "tasks": [
+        // ==================== Build ====================
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "just",
+            "args": ["build"],
+            "problemMatcher": ["$gcc"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+
+        // ==================== Clean ====================
+        {
+            "label": "clean",
+            "type": "shell",
+            "command": "just",
+            "args": ["clean"],
+            "problemMatcher": []
+        },
+
+        // ==================== Rebuild ====================
+        {
+            "label": "rebuild",
+            "dependsOrder": "sequence",
+            "dependsOn": ["clean", "build"],
+            "problemMatcher": []
+        },
+
+        // ==================== Flash - DFU-Util ====================
+        {
+            "label": "flash: dfu-util",
+            "type": "shell",
+            "dependsOn": "build",
+            "dependsOrder": "sequence",
+            "command": "just",
+            "args": ["flash", "--method", "dfu"],
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared"
+            }
+        },
+
+        // ==================== Flash - pyOCD ====================
+        {
+            "label": "flash: pyocd",
+            "type": "shell",
+            "dependsOn": "build",
+            "dependsOrder": "sequence",
+            "command": "just",
+            "args": ["flash", "--method", "pyocd"],
+            "problemMatcher": []
+        },
+
+        // ==================== Flash - JLink ====================
+        {
+            "label": "flash: jlink",
+            "type": "shell",
+            "dependsOn": "build",
+            "dependsOrder": "sequence",
+            "command": "just",
+            "args": ["flash", "--method", "jlink"],
+            "problemMatcher": []
+        },
+
+        // ==================== Flash - auto detect ====================
+        {
+            "label": "flash: auto",
+            "type": "shell",
+            "dependsOn": "build",
+            "dependsOrder": "sequence",
+            "command": "just",
+            "args": ["flash"],
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared"
+            }
+        },
+
+        // ==================== RTT log viewer ====================
+        {
+            "label": "logger",
+            "type": "shell",
+            "command": "just",
+            "args": ["logger"],
+            "problemMatcher": [],
+            "isBackground": true,
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "dedicated"
+            }
+        }
+    ]
+}

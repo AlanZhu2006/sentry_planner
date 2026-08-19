@@ -1,8 +1,0 @@
-## main...origin/main
- M src/rm_localization/icp_registration/include/icp_registration/icp_registration.hpp
- M src/rm_localization/icp_registration/src/icp_registration.cpp
- M src/rm_nav_bringup/config/simulation/pointlio_mid360_sim.yaml
- M src/rm_nav_bringup/urdf/sentry_robot_sim.xacro
- M src/rm_navigation/fake_vel_transform/include/fake_vel_transform/fake_vel_transform.hpp
- M src/rm_navigation/fake_vel_transform/launch/fake_vel_transform.launch.py
- M src/rm_navigation/fake_vel_transform/src/fake_vel_transform.cpp
