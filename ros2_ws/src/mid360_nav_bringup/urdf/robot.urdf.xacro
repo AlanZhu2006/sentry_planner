@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="mid360_mobile_robot">
+  <xacro:arg name="base_length" default="0.55"/>
+  <xacro:arg name="base_width" default="0.55"/>
+  <xacro:arg name="base_height" default="0.50"/>
+  <xacro:arg name="lidar_x" default="0.0"/>
+  <xacro:arg name="lidar_y" default="-0.11"/>
+  <xacro:arg name="lidar_z" default="0.35"/>
+  <xacro:arg name="lidar_roll" default="0.0"/>
+  <xacro:arg name="lidar_pitch" default="0.0"/>
+  <xacro:arg name="lidar_yaw" default="0.0"/>
+
+  <link name="base_footprint"/>
+
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 ${0.5 * float($(arg base_height))}"/>
+      <geometry>
+        <box size="$(arg base_length) $(arg base_width) $(arg base_height)"/>
+      </geometry>
+      <material name="robot_blue"><color rgba="0.12 0.32 0.70 1.0"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 ${0.5 * float($(arg base_height))}"/>
+      <geometry>
+        <box size="$(arg base_length) $(arg base_width) $(arg base_height)"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="base_footprint_joint" type="fixed">
+    <parent link="base_footprint"/>
+    <child link="base_link"/>
+  </joint>
+
+  <link name="livox_frame">
+    <visual>
+      <geometry><cylinder radius="0.033" length="0.064"/></geometry>
+      <material name="livox_black"><color rgba="0.08 0.08 0.08 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="livox_mount_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="livox_frame"/>
+    <origin xyz="$(arg lidar_x) $(arg lidar_y) $(arg lidar_z)"
+            rpy="$(arg lidar_roll) $(arg lidar_pitch) $(arg lidar_yaw)"/>
+  </joint>
+</robot>

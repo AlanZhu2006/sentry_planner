@@ -1,0 +1,9 @@
+*.pcd
+*.pgm
+*.yaml
+!.gitignore
+!README.md
+!SHA256SUMS
+!arena.pcd
+!arena.pgm
+!arena.yaml

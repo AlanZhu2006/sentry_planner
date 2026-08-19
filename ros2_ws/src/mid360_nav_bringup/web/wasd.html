@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>NYUSH Swerve Teleop</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07111d;
+      --panel: #101d2c;
+      --panel-2: #15263a;
+      --line: #2b4058;
+      --text: #eef6ff;
+      --muted: #91a7bd;
+      --cyan: #39d7ff;
+      --green: #4ee49a;
+      --amber: #ffc861;
+      --red: #ff667d;
+      --shadow: 0 18px 60px rgba(0, 0, 0, .38);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% 0%, rgba(57, 215, 255, .13), transparent 32rem),
+        radial-gradient(circle at 90% 100%, rgba(78, 228, 154, .09), transparent 28rem),
+        var(--bg);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    main { width: min(980px, 100%); }
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    h1 { margin: 0; font-size: clamp(24px, 4vw, 38px); letter-spacing: -.035em; }
+    .subtitle { margin-top: 6px; color: var(--muted); font-size: 14px; }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 140px;
+      justify-content: center;
+      padding: 10px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(16, 29, 44, .86);
+      font-weight: 750;
+      font-size: 13px;
+      letter-spacing: .08em;
+    }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); box-shadow: 0 0 12px currentColor; }
+    .status.connected .dot { background: var(--amber); }
+    .status.armed .dot { background: var(--green); }
+    .status.moving .dot { background: var(--cyan); }
+    .status.error .dot { background: var(--red); }
+    .grid { display: grid; grid-template-columns: 1.25fr .75fr; gap: 18px; }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: linear-gradient(145deg, rgba(21, 38, 58, .94), rgba(12, 24, 38, .94));
+      box-shadow: var(--shadow);
+      padding: 22px;
+    }
+    .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 22px; }
+    button, select {
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      color: var(--text);
+      background: var(--panel-2);
+      font: inherit;
+    }
+    .enable {
+      flex: 1;
+      min-width: 180px;
+      padding: 13px 17px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: .15s ease;
+    }
+    .enable:hover { border-color: var(--cyan); transform: translateY(-1px); }
+    .enable.on { color: #04150d; background: var(--green); border-color: var(--green); }
+    select { padding: 12px 13px; cursor: pointer; }
+    .keys {
+      width: min(460px, 100%);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 11px;
+      touch-action: none;
+      user-select: none;
+    }
+    .key {
+      position: relative;
+      min-height: 92px;
+      padding: 12px;
+      cursor: pointer;
+      font-size: 28px;
+      font-weight: 900;
+      transition: transform .08s ease, border-color .1s ease, background .1s ease;
+    }
+    .key small { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; font-weight: 650; letter-spacing: .06em; }
+    .key.pressed {
+      transform: translateY(2px) scale(.98);
+      border-color: var(--cyan);
+      background: rgba(57, 215, 255, .20);
+      box-shadow: inset 0 0 24px rgba(57, 215, 255, .12);
+    }
+    .key.stop { color: var(--red); font-size: 20px; }
+    .key.blank { visibility: hidden; }
+    .readout { display: grid; gap: 12px; }
+    .metric { padding: 15px; border: 1px solid var(--line); border-radius: 14px; background: rgba(7, 17, 29, .45); }
+    .metric span { color: var(--muted); font-size: 12px; }
+    .metric strong { display: block; margin-top: 5px; font-size: 20px; font-variant-numeric: tabular-nums; }
+    .notice {
+      margin-top: 16px;
+      padding: 13px 15px;
+      border-left: 3px solid var(--amber);
+      border-radius: 8px;
+      background: rgba(255, 200, 97, .08);
+      color: #ffe4ad;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .message { min-height: 22px; margin-top: 14px; color: var(--muted); font-size: 13px; text-align: center; }
+    .message.error { color: var(--red); }
+    kbd { border: 1px solid var(--line); border-bottom-width: 3px; border-radius: 6px; padding: 1px 5px; background: var(--panel); font-family: inherit; }
+    @media (max-width: 760px) {
+      body { padding: 14px; }
+      header { align-items: flex-start; flex-direction: column; }
+      .grid { grid-template-columns: 1fr; }
+      .card { padding: 16px; border-radius: 17px; }
+      .key { min-height: 76px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>NYUSH Swerve Teleop</h1>
+        <div class="subtitle">浏览器按下/松开事件 · ROS 2 高优先级手动控制</div>
+      </div>
+      <div id="status" class="status"><span class="dot"></span><span id="statusText">CONNECTING</span></div>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <div class="toolbar">
+          <button id="enable" class="enable" type="button">ENABLE CONTROL</button>
+          <select id="speedScale" aria-label="速度档位">
+            <option value="0.4">40% · 调试</option>
+            <option value="0.7">70% · 中速</option>
+            <option value="1" selected>100% · 全速</option>
+          </select>
+        </div>
+
+        <div class="keys" aria-label="运动控制">
+          <button class="key" data-key="q" type="button">Q<small>逆时针旋转</small></button>
+          <button class="key" data-key="w" type="button">W<small>前进</small></button>
+          <button class="key" data-key="e" type="button">E<small>顺时针旋转</small></button>
+          <button class="key" data-key="a" type="button">A<small>左移</small></button>
+          <button id="stop" class="key stop" type="button">STOP<small>空格键</small></button>
+          <button class="key" data-key="d" type="button">D<small>右移</small></button>
+          <button class="key blank" tabindex="-1" aria-hidden="true"></button>
+          <button class="key" data-key="s" type="button">S<small>后退</small></button>
+          <button class="key blank" tabindex="-1" aria-hidden="true"></button>
+        </div>
+        <div id="message" class="message">点击 ENABLE CONTROL 后开始操作</div>
+      </section>
+
+      <aside class="card readout">
+        <div class="metric"><span>线速度</span><strong id="linear">0.00 m/s</strong></div>
+        <div class="metric"><span>角速度</span><strong id="angular">0.00 rad/s</strong></div>
+        <div class="metric"><span>当前按键</span><strong id="activeKeys">—</strong></div>
+        <div class="metric"><span>看门狗</span><strong id="watchdog">350 ms</strong></div>
+        <div class="notice">
+          初次测试请架空车轮。松开按键、切换窗口、关闭页面或网络中断都会自动停车。
+          <kbd>Esc</kbd> 解除控制，<kbd>Space</kbd> 立即发送零速。页面默认无密码，
+          仅限可信局域网使用，请勿将 8088 端口映射到公网。
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    "use strict";
+    const token = new URLSearchParams(location.search).get("token") || "";
+
+    function createClientId() {
+      if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+      const words = new Uint32Array(4);
+      crypto.getRandomValues(words);
+      return [...words].map(word => word.toString(16).padStart(8, "0")).join("");
+    }
+
+    const client = sessionStorage.getItem("nyushTeleopClient") || createClientId();
+    sessionStorage.setItem("nyushTeleopClient", client);
+
+    const allowed = new Set(["w", "a", "s", "d", "q", "e"]);
+    const pressed = new Set();
+    let armed = false;
+    let sequence = 0;
+    let speedScale = 1.0;
+    let linearLimit = 0.80;
+    let angularLimit = 2.40;
+    let requestFailed = false;
+
+    const elements = {
+      status: document.getElementById("status"),
+      statusText: document.getElementById("statusText"),
+      enable: document.getElementById("enable"),
+      scale: document.getElementById("speedScale"),
+      stop: document.getElementById("stop"),
+      message: document.getElementById("message"),
+      linear: document.getElementById("linear"),
+      angular: document.getElementById("angular"),
+      activeKeys: document.getElementById("activeKeys"),
+      watchdog: document.getElementById("watchdog"),
+      keyButtons: [...document.querySelectorAll("[data-key]")],
+    };
+
+    function apiUrl(path) {
+      return token ? `${path}?token=${encodeURIComponent(token)}` : path;
+    }
+
+    async function api(path, method = "GET", payload = null, keepalive = false) {
+      const options = {method, cache: "no-store", keepalive};
+      if (payload !== null) {
+        options.headers = {"Content-Type": "application/json"};
+        options.body = JSON.stringify(payload);
+      }
+      const response = await fetch(apiUrl(path), options);
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.error || data.message || `HTTP ${response.status}`);
+      return data;
+    }
+
+    function commandVector() {
+      let vx = Number(pressed.has("w")) - Number(pressed.has("s"));
+      let vy = Number(pressed.has("a")) - Number(pressed.has("d"));
+      const wz = Number(pressed.has("q")) - Number(pressed.has("e"));
+      const norm = Math.hypot(vx, vy);
+      if (norm > 1) { vx /= norm; vy /= norm; }
+      return {vx, vy, wz};
+    }
+
+    function render(message = "") {
+      const vector = commandVector();
+      const moving = armed && (vector.vx !== 0 || vector.vy !== 0 || vector.wz !== 0);
+      elements.status.className = `status ${requestFailed ? "error" : moving ? "moving" : armed ? "armed" : "connected"}`;
+      elements.statusText.textContent = requestFailed ? "CONNECTION LOST" : moving ? "MOVING" : armed ? "ARMED" : "DISARMED";
+      elements.enable.classList.toggle("on", armed);
+      elements.enable.textContent = armed ? "DISABLE CONTROL" : "ENABLE CONTROL";
+      elements.keyButtons.forEach(button => button.classList.toggle("pressed", pressed.has(button.dataset.key)));
+      elements.activeKeys.textContent = pressed.size ? [...pressed].map(key => key.toUpperCase()).join(" + ") : "—";
+      elements.linear.textContent = `${(Math.hypot(vector.vx, vector.vy) * linearLimit * speedScale).toFixed(2)} m/s`;
+      elements.angular.textContent = `${(vector.wz * angularLimit * speedScale).toFixed(2)} rad/s`;
+      elements.message.textContent = message || (armed ? "控制已启用；保持页面在前台" : "点击 ENABLE CONTROL 后开始操作");
+      elements.message.classList.toggle("error", requestFailed);
+    }
+
+    async function claimControl() {
+      pressed.clear();
+      const data = await api("/api/claim", "POST", {client});
+      armed = true;
+      requestFailed = false;
+      render("已取得控制权");
+      await sendControl();
+      applyServerState(data.state);
+    }
+
+    async function sendControl(keepalive = false) {
+      const payload = {
+        client,
+        sequence: ++sequence,
+        armed,
+        keys: [...pressed],
+        speed_scale: speedScale,
+      };
+      try {
+        const data = await api("/api/control", "POST", payload, keepalive);
+        requestFailed = false;
+        applyServerState(data.state);
+      } catch (error) {
+        requestFailed = true;
+        armed = false;
+        pressed.clear();
+        render(error.message);
+      }
+    }
+
+    async function releaseControl(reason = "控制已解除") {
+      const held = armed;
+      armed = false;
+      pressed.clear();
+      render(reason);
+      if (!held) return;
+      try {
+        await api("/api/release", "POST", {client}, true);
+        requestFailed = false;
+      } catch (_error) {
+        requestFailed = true;
+      }
+      render(reason);
+    }
+
+    function applyServerState(state) {
+      if (!state) return;
+      linearLimit = Number(state.linear_speed ?? linearLimit);
+      angularLimit = Number(state.angular_speed ?? angularLimit);
+      if (state.watchdog_s) elements.watchdog.textContent = `${Math.round(state.watchdog_s * 1000)} ms`;
+      render();
+    }
+
+    function pressKey(key) {
+      if (!armed || pressed.has(key)) return;
+      pressed.add(key);
+      render();
+      void sendControl();
+    }
+
+    function releaseKey(key) {
+      if (!pressed.delete(key)) return;
+      render();
+      void sendControl();
+    }
+
+    function stopMotion() {
+      pressed.clear();
+      render("零速已发送");
+      if (armed) void sendControl();
+    }
+
+    elements.enable.addEventListener("click", async () => {
+      try {
+        if (armed) await releaseControl(); else await claimControl();
+      } catch (error) {
+        requestFailed = true;
+        armed = false;
+        pressed.clear();
+        render(error.message);
+      }
+    });
+    elements.scale.addEventListener("change", () => {
+      speedScale = Number(elements.scale.value);
+      render();
+      if (armed) void sendControl();
+    });
+    elements.stop.addEventListener("pointerdown", event => { event.preventDefault(); stopMotion(); });
+
+    elements.keyButtons.forEach(button => {
+      const key = button.dataset.key;
+      button.addEventListener("pointerdown", event => {
+        event.preventDefault();
+        button.setPointerCapture(event.pointerId);
+        pressKey(key);
+      });
+      button.addEventListener("pointerup", event => { event.preventDefault(); releaseKey(key); });
+      button.addEventListener("pointercancel", () => releaseKey(key));
+      button.addEventListener("lostpointercapture", () => releaseKey(key));
+    });
+
+    window.addEventListener("keydown", event => {
+      const key = event.key.toLowerCase();
+      if (key === "escape") { event.preventDefault(); void releaseControl("Esc：控制已解除"); return; }
+      if (key === " ") { event.preventDefault(); stopMotion(); return; }
+      if (!allowed.has(key)) return;
+      event.preventDefault();
+      if (!event.repeat) pressKey(key);
+    });
+    window.addEventListener("keyup", event => {
+      const key = event.key.toLowerCase();
+      if (!allowed.has(key)) return;
+      event.preventDefault();
+      releaseKey(key);
+    });
+    window.addEventListener("blur", () => { if (armed) void releaseControl("页面失焦：已自动停车"); });
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden && armed) void releaseControl("页面隐藏：已自动停车");
+    });
+    window.addEventListener("pagehide", () => {
+      armed = false;
+      pressed.clear();
+      const body = new Blob([JSON.stringify({client})], {type: "application/json"});
+      navigator.sendBeacon(apiUrl("/api/release"), body);
+    });
+
+    setInterval(() => { if (armed) void sendControl(); }, 100);
+    setInterval(async () => {
+      if (armed) return;
+      try {
+        const data = await api("/api/state");
+        requestFailed = false;
+        applyServerState(data.state);
+      } catch (error) {
+        requestFailed = true;
+        render(error.message);
+      }
+    }, 750);
+
+    void api("/api/state").then(data => {
+      requestFailed = false;
+      applyServerState(data.state);
+    }).catch(error => {
+      requestFailed = true;
+      render(error.message);
+    });
+  </script>
+</body>
+</html>

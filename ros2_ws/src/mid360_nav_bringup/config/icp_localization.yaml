@@ -1,0 +1,61 @@
+direct_icp_probe:
+  ros__parameters:
+    use_sim_time: false
+    map_path: ""
+    # Use FAST-LIO's motion-compensated body-frame cloud, matching go2_nav.
+    input_topic: /cloud_registered_body
+    map_frame: map
+    odom_frame: odom
+    initial_pose_frame: base_link
+    initial_pose_topic: /initialpose
+    publish_map_to_odom: true
+    auto_start: true
+    tf_publish_rate: 20.0
+
+    # /cloud_registered_body is already deskewed by FAST-LIO.  Match one fresh
+    # body cloud, as go2_nav does, rather than stacking duplicate scans.
+    frames_to_accumulate: 1
+    min_range: 0.50
+    # Reproduce the proven go2_nav registration input: the complete raw
+    # FAST-LIO PCD, with a 0.4 m rough pass and a 0.1 m refinement pass.  The
+    # previous 0.2--1.5 m / 0.2 m / 8 m crop retained only 2691 map points and
+    # repeatedly accepted the wrong -111 degree solution at fitness ~= 0.20.
+    map_min_z: -50.0
+    map_max_z: 50.0
+    voxel_leaf: 0.10
+    rough_voxel_leaf: 0.40
+    target_crop_radius: 0.0
+    max_range: 100.0
+    max_correspondence: 2.00
+    rough_max_correspondence: 3.00
+    max_iterations: 20
+    rough_iterations: 10
+    fitness_threshold: 0.10
+    min_overlap_ratio: 0.80
+    max_inlier_rmse: 0.15
+
+    # A low fitness score alone is not proof that the pose is correct. Reject
+    # candidates that jump far from the supplied seed. The current validated
+    # startup accepts one result only after all quality gates pass.
+    # The arena3 start scan is located about 5.6 m from the nominal PCD origin.
+    # A strict score/overlap/RMSE gate still prevents weak distant matches.
+    max_seed_xy_correction: 8.00
+    max_seed_z_correction: 0.50
+    max_seed_yaw_correction_deg: 180.0
+    required_consistent_results: 1
+    consistency_translation: 0.25
+    consistency_yaw_deg: 5.0
+    retry_on_failure: true
+    retry_skip_frames: 15
+
+    # go2_nav-style startup search: +/-2.25 m and all headings (1225 rough
+    # candidates). The verified full-map match takes about 50 seconds here.
+    xy_offset: 0.75
+    xy_search_steps: 3
+    yaw_offset_deg: 180.0
+    yaw_resolution_deg: 15.0
+
+    initial_x: 0.0
+    initial_y: 0.0
+    initial_z: 0.0
+    initial_yaw: 0.0

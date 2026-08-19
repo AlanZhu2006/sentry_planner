@@ -187,7 +187,7 @@ flash *args:
     fi; \
     if [[ "$method" == "auto" ]] && command -v JLinkExe >/dev/null 2>&1; then \
       jlink_output="$(printf 'ShowEmuList USB\nexit\n' | JLinkExe -NoGui 1 2>&1 || true)"; \
-      if printf '%s\n' "$jlink_output" | grep -Eq 'J-Link\\[[0-9]+\\]:'; then \
+      if printf '%s\n' "$jlink_output" | grep -Eq 'J-Link\[[0-9]+\]:'; then \
         method="jlink"; \
       fi; \
     fi; \
@@ -230,14 +230,62 @@ flash *args:
 logger-cli *args:
   just _py scripts/dashboard/rtt_dashboard.py --mode dashboard --channel 1 --log-channel 0 --connect normal --poll-ms 20 --refresh-ms 100 {{args}}
 
-# Ensure python env/deps, then run RTT websocket logger bridge.
-# Extra args pass-through: just logger --ws-port 9000 --serial 69655005
+# Ensure python env/deps, then serve the RTT dashboard and WebSocket on LAN port 8765.
+# Extra args pass-through: just logger --serial 69655005
 logger *args:
-  just _py scripts/dashboard/rtt_ws_bridge.py --dashboard-channel 1 --log-channel 0 --ws-host 127.0.0.1 --ws-port 8765 --http-host 127.0.0.1 --http-port 8080 {{args}}
+  just _py scripts/dashboard/rtt_ws_bridge.py --dashboard-channel 1 --log-channel 0 --ws-host 0.0.0.0 --ws-port 8765 --http-host 0.0.0.0 --http-port 8765 {{args}}
 
 # Ensure python env/deps, then run interactive vision serial tool.
 vision *args:
   just _py scripts/vision_tool.py {{args}}
+
+# Start the browser WASD controller through the ROS 2 teleop topic.
+wasd *args:
+  @workspace="${ROBOT_WS:-${HOME}/robot_ws}"; launcher="${workspace}/src/mid360_nav_bringup/scripts/start_wasd.sh"; \
+  if [[ ! -x "${launcher}" ]]; then \
+    echo "WASD launcher not found: ${launcher}" >&2; exit 2; \
+  fi; \
+  exec "${launcher}" {{args}}
+
+# Start MID-360 + FAST-LIO mapping. Example: just map arena
+map *args:
+  @workspace="${ROBOT_WS:-${HOME}/robot_ws}"; launcher="${workspace}/src/mid360_nav_bringup/scripts/start_mapping.sh"; \
+  if [[ ! -x "${launcher}" ]]; then \
+    echo "Mapping launcher not found: ${launcher}" >&2; exit 2; \
+  fi; \
+  exec "${launcher}" {{args}}
+
+# Save the active FAST-LIO map as PCD + PGM + YAML. Example: just map-save arena
+map-save *args:
+  @workspace="${ROBOT_WS:-${HOME}/robot_ws}"; launcher="${workspace}/src/mid360_nav_bringup/scripts/save_map.sh"; \
+  if [[ ! -x "${launcher}" ]]; then \
+    echo "Map saver not found: ${launcher}" >&2; exit 2; \
+  fi; \
+  exec "${launcher}" {{args}}
+
+# Start MID-360 + ICP localization + Nav2. Example: just nav arena
+nav *args:
+  @workspace="${ROBOT_WS:-${HOME}/robot_ws}"; launcher="${workspace}/src/mid360_nav_bringup/scripts/start_navigation.sh"; \
+  if [[ ! -x "${launcher}" ]]; then \
+    echo "Navigation launcher not found: ${launcher}" >&2; exit 2; \
+  fi; \
+  exec "${launcher}" {{args}}
+
+# Build one ROS 2 package from the robot workspace. Example: just ros-build fast_lio
+ros-build package="fast_lio":
+  @package="{{package}}"; workspace="${ROBOT_WS:-${HOME}/robot_ws}"; \
+  if [[ ! "${package}" =~ ^[A-Za-z0-9_]+$ ]]; then \
+    echo "Invalid ROS package name: ${package}" >&2; exit 2; \
+  fi; \
+  if [[ ! -d "${workspace}/src" ]]; then \
+    echo "ROS workspace not found: ${workspace}" >&2; exit 2; \
+  fi; \
+  set +u; \
+  source "${ROS_SETUP:-/opt/ros/${ROS_DISTRO:-humble}/setup.bash}"; \
+  set -u; \
+  cd "${workspace}"; \
+  colcon build --symlink-install --packages-select "${package}" \
+    --allow-overriding "${package}"
 
 # Short aliases for daily use.
 b *args:
